@@ -1,13 +1,12 @@
-classdef ilqr < handle
+classdef ilqr_mpc < handle
     % This class sets up the optimization problem with the constructor and
     % solve will return the optimal set of inputs and gains to achieve a desired target state.
     % Note that the discrete dynamics of the system and it's Jacobians are
     % required to be functions ready to be called with
     % inputs(state,input,dt,parameters)
     properties
-        init_state_
+        current_state_
         states_
-        target_state_
         inputs_
         dt_
         start_time_
@@ -26,21 +25,23 @@ classdef ilqr < handle
         f_
         n_timesteps_
         n_iterations_
+        target_states_
+        target_inputs_
+        horizon_
+        current_idx_
     end
     methods
         % Constructor
-        function self = ilqr(init_state,target_state,initial_guess,dt,start_time,end_time,f_disc,A,B,Q_k,R_k,Q_T,parameters,n_iterations)
-            self.init_state_ = init_state;
-            self.target_state_ = target_state;
-            self.inputs_ = initial_guess;
-            self.n_states_ = size(init_state,1);
+        % Need to add in tracking
+        function self = ilqr_mpc(target_states,initial_guess,dt,horizon,f_disc,A,B,Q_k,R_k,Q_T,parameters,n_iterations)
+            self.target_states_ = target_states;
+            self.target_inputs_ = initial_guess;
+            self.n_states_ = size(target_states,2);
             self.n_inputs_ = size(initial_guess,2);
             
             self.dt_ = dt;
-            self.start_time_ = start_time;
-            self.end_time_ = end_time;
-            self.time_span_ = start_time:dt:end_time;
-            self.n_timesteps_ = size(self.time_span_,2);
+            
+            self.n_timesteps_ = horizon;
             % Dynamics
             self.f_ = f_disc;
             self.A_ = A;
@@ -54,20 +55,57 @@ classdef ilqr < handle
             % Max iterations
             self.n_iterations_ = n_iterations;
         end
-        function [states,inputs,k_feedforward,K_feedback,current_cost] = solve(self)
+        function [states,inputs,k_feedforward,K_feedback,current_cost] = solve_ilqr(self,current_idx,current_state)
+            self.current_state_ = current_state;
+            self.current_idx_ = current_idx;
+            
+            % If first time solving, then compute the backwards pass for
+            % gains
+            if(current_idx == 1)
+                % Set the reference trajectory as the actual
+                self.inputs_ = self.target_inputs_(current_idx:self.n_timesteps_,:);
+                self.states_ = self.target_states_(current_idx:(self.n_timesteps_+1),:);
+                % First compute backwards pass along the reference
+                % trajectory to get the gain schedule
+                [k_feedforward,K_feedback,expected_reduction] = ...
+                    self.backwards_pass(self.states_,self.inputs_);
+            else
+                % Update the warm start to include the end of the
+                % trajectory
+                
+                % use the reference to pad
+                self.inputs_ = [self.inputs_(2:end,:); self.target_inputs_(current_idx+self.n_timesteps_-1,:)];
+                self.states_ = [self.states_(2:end,:); self.target_states_(current_idx+self.n_timesteps_,:)];
+                
+%                 % repeat the last index instead of using the reference to
+%                 pad (worse convergence)
+%                 self.inputs_ = [self.inputs_(2:end,:); self.inputs_(end,:)];
+%                 self.states_ = [self.states_(2:end,:); self.states_(end,:)];
+
+                % Repeat the gain
+                self.K_feedback_ = [self.K_feedback_(2:end,:,:); self.K_feedback_(end,:,:)];
+            end
             % Compute the rollout to get the initial trajectory with the
-            % initial guess
-            [states,inputs] = self.rollout();
+            % initial guess (use forward pass with 0 learning rate to use
+            % the feedback gains)
+            [new_states,new_inputs]=self.forwards_pass(0); % Learning rate 0 to use no feed forward terms (this might be wrong)
+            %             animate_pendulum(new_states)
+            
             % Compute the current cost of the initial trajectory
-            current_cost = self.compute_cost(states,inputs);
+            % Store the current trajectory and cost
+            current_cost = self.compute_cost(new_states,new_inputs);
+            self.states_ = new_states;
+            self.inputs_ = new_inputs;
             
             learning_speed = 0.95; % This can be modified, 0.95 is very slow
             low_learning_rate = 0.05; % if learning rate drops to this value stop the optimization
+
             low_expected_reduction = 1e-3; % Determines optimality
+
             for ii = 1:self.n_iterations_
                 disp(['Starting iteration: ',num2str(ii)]);
                 % Compute the backwards pass
-                [k_feedforward,K_feedback,expected_reduction] = self.backwards_pass();
+                [k_feedforward,K_feedback,expected_reduction] = self.backwards_pass(new_states,new_inputs);
                 
                 if(abs(expected_reduction)<low_expected_reduction)
                     % If the expected reduction is low, then end the
@@ -80,11 +118,12 @@ classdef ilqr < handle
                 % Execute linesearch until the armijo condition is met (for
                 % now just check if the cost decreased) TODO add real
                 % armijo condition
-                while(learning_rate > 0.05 && armijo_flag == 0)
+                while(learning_rate > low_learning_rate && armijo_flag == 0)
                     % Compute forward pass
                     [new_states,new_inputs]=forwards_pass(self,learning_rate);
                     new_cost = self.compute_cost(new_states,new_inputs);
                     armijo_flag = current_cost - new_cost > 0; % Not real armijo condition, just checking if cost decreased
+%                     disp(['New cost: ',num2str(new_cost),', Prev cost: ',num2str(current_cost)]);
                     if(armijo_flag == 1)
                         % Accept the new trajectory if armijo condition is
                         % met
@@ -94,7 +133,7 @@ classdef ilqr < handle
                     else
                         % If no improvement, decrease the learning rate
                         learning_rate = learning_speed*learning_rate;
-                        disp(['Reducing learning rate to: ',num2str(learning_rate)]);
+%                         disp(['Reducing learning rate to: ',num2str(learning_rate)]);
                     end
                 end
                 if(learning_rate<low_learning_rate)
@@ -103,28 +142,42 @@ classdef ilqr < handle
                     break;
                 end
             end
+
+
             % Return the current trajectory
             states = self.states_;
             inputs = self.inputs_;
+            
+
         end
         function total_cost = compute_cost(self,states,inputs)
             % Initialize cost
             total_cost = 0.0;
             for ii = 1:self.n_timesteps_
-                current_x = states(ii,:)'; % Not being used currently
+                % Get the actual input and state
+                current_x = states(ii,:)';
                 current_u = inputs(ii,:)';
                 
-                current_cost = current_u'*self.R_k_*current_u; % Right now only considering cost in input
+                adjustment_idx = self.current_idx_ -1;
+                % Get the current target input and state
+                current_x_des = self.target_states_(ii+adjustment_idx,:)';
+                current_u_des = self.target_inputs_(ii+adjustment_idx,:)';
+                
+                % Compute differences from the target
+                x_difference = current_x_des - current_x;
+                u_difference = current_u_des - current_u;
+                current_cost = u_difference'*self.R_k_*u_difference + x_difference'*self.Q_k_*x_difference;
                 total_cost = total_cost+current_cost;
             end
             % Compute terminal cost
-            terminal_cost = (self.target_state_-states(end,:)')'*self.Q_T_*(self.target_state_-states(end,:)');
+            terminal_x_diff = self.target_states_(self.current_idx_+self.n_timesteps_,:)'-states(end,:)';
+            terminal_cost = terminal_x_diff'*self.Q_T_*terminal_x_diff;
             total_cost = total_cost+terminal_cost;
         end
         function [states,inputs] = rollout(self)
             states = zeros(self.n_timesteps_+1,self.n_states_);
             inputs = zeros(self.n_timesteps_,self.n_inputs_);
-            current_state = self.init_state_;
+            current_state = self.current_state_;
             
             for ii=1:self.n_timesteps_
                 current_input = self.inputs_(ii,:)';
@@ -139,26 +192,30 @@ classdef ilqr < handle
             self.states_ = states;
             self.inputs_= inputs;
         end
-        function [k_trj,K_trj,expected_cost_redu] = backwards_pass(self)
+        function [k_trj,K_trj,expected_cost_redu] = backwards_pass(self,states,inputs)
             % Initialize feedforward gains
-            k_trj = zeros(size(self.inputs_));
-            K_trj = zeros(size(self.inputs_,1),size(self.inputs_,2),size(self.states_,2));
+            k_trj = zeros(self.n_timesteps_,self.n_inputs_);
+            K_trj = zeros(self.n_timesteps_,self.n_inputs_,self.n_states_);
             % Initialize expected cost reduction
             expected_cost_redu = 0;
             
+            idx_adjustment = self.current_idx_-1;
             % Iitialize gradient and hessian of the value function
-            V_x = self.Q_T_*(self.states_(end,:)'-self.target_state_);
+            V_x = self.Q_T_*(states(end,:)'-self.target_states_(self.current_idx_+self.n_timesteps_,:)');
             V_xx = self.Q_T_;
             
             for ii = flip(1:self.n_timesteps_) % Go backwards in time
                 % Get the current state and input
-                current_x = self.states_(ii,:)';
-                current_u = self.inputs_(ii,:)';
+                current_x = states(ii,:)';
+                current_u = inputs(ii,:)';
+                
+                current_x_des = self.target_states_(ii+idx_adjustment,:)';
+                current_u_des = self.target_inputs_(ii+idx_adjustment,:)';
                 
                 % Get the gradient and hessian of the current cost
-                l_x = zeros(size(current_x)); % Defined as zero right now because there is no desired trajectory
+                l_x = self.Q_k_*(current_x_des-current_x); % Defined as zero right now because there is no desired trajectory
                 l_xx = self.Q_k_; % Q_k should also be zero here
-                l_u = self.R_k_*current_u;
+                l_u = self.R_k_*(current_u_des-current_u);
                 l_uu = self.R_k_;
                 
                 % Get the jacobian of the discretized dynamics
@@ -193,10 +250,10 @@ classdef ilqr < handle
         function [states,inputs]=forwards_pass(self,learning_rate)
             states = zeros(self.n_timesteps_+1,self.n_states_);
             inputs = zeros(self.n_timesteps_,self.n_inputs_);
-            current_state = self.init_state_;
+            current_state = self.current_state_;
             
-            % set the first state to be the initial
             states(1,:) = current_state;
+
             for ii=1:self.n_timesteps_
                 % Get the current gains and compute the feedforward and
                 % feedback terms

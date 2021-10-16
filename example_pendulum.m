@@ -36,6 +36,7 @@ n_iterations = 50;
 ilqr_ = ilqr(init_state,target_state,initial_guess,dt,start_time,end_time,@calc_f_disc,@calc_A_disc,@calc_B_disc,Q_k,R_k,Q_T,parameters,n_iterations);
 % Solve
 [states,inputs,k_feedforward,K_feedback,final_cost] = ilqr_.solve();
+save('swingup-trajectory.mat','states','inputs','dt','parameters','k_feedforward','K_feedback'); % Save trajectory to track later
 
 figure(1);
 h1 = plot(states(:,1),states(:,2),'k');
