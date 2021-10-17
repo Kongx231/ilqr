@@ -10,7 +10,7 @@ duration = size(inputs,1);
 % Define weighting matrices
 n_states = size(states,2); n_inputs = size(inputs,2);
 Q_k = 0.01*eye(n_states); % We care most about reaching the end goal of swinging up
-R_k = 0.1*eye(n_inputs);
+R_k = 0.05*eye(n_inputs);
 
 % Equal weighting
 Q_T = 500*eye(n_states);
@@ -66,15 +66,15 @@ for ii=1:duration
     
     % Update the current state
     current_state = next_state;
-    figure(4);
-    h1 = plot3(states(:,1),states(:,2),states(:,3),'k-');
-    hold on
-    
-    h3 = plot3(states(ii:(ii+horizon-1),1),states(ii:(ii+horizon-1),2),states(ii:(ii+horizon-1),3),'ro');
-    h2 = plot3(new_states(:,1),new_states(:,2),new_states(:,3),'b.');
-    h4 = plot3(states_solve(:,1),states_solve(:,2),states_solve(:,3),'b--');
-    legend([h1,h2,h3,h4],"Reference Trajectory","Perturbed Trajectory","Reference Horizon","MPC Horizon");
-    hold off
+%     figure(4);
+%     h1 = plot3(states(:,1),states(:,2),states(:,3),'k-');
+%     hold on
+%     
+%     h3 = plot3(states(ii:(ii+horizon-1),1),states(ii:(ii+horizon-1),2),states(ii:(ii+horizon-1),3),'ro');
+%     h2 = plot3(new_states(:,1),new_states(:,2),new_states(:,3),'b.');
+%     h4 = plot3(states_solve(:,1),states_solve(:,2),states_solve(:,3),'b--');
+%     legend([h1,h2,h3,h4],"Reference Trajectory","Perturbed Trajectory","Reference Horizon","MPC Horizon");
+%     hold off
     
 end
 figure(1);

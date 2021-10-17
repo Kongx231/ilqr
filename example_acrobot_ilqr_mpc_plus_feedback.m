@@ -73,6 +73,8 @@ for ii=1:duration
     
     % Update the current state
     current_state = next_state;
+    
+    % Comment in to view mpc solves (WAY SLOWER!)
 %     figure(4);
 %     h1 = plot(states(:,1),states(:,2),'k-');
 %     hold on

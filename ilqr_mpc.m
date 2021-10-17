@@ -95,10 +95,10 @@ classdef ilqr_mpc < handle
                 end
                 horizon_end_idx = current_idx+self.n_timesteps_;
                 
-                self.inputs_ = [self.inputs_((span_from_last_call):end,:);
+                self.inputs_ = [self.inputs_((span_from_last_call+1):end,:);
                     self.target_inputs_((horizon_end_idx-span_from_last_call):(horizon_end_idx-1),:)];
                 self.states_ = [self.states_((span_from_last_call+1):end,:);
-                    self.target_states_((horizon_end_idx-span_from_last_call):horizon_end_idx,:)];
+                    self.target_states_((horizon_end_idx-span_from_last_call+1):horizon_end_idx,:)];
                 
                 %                 % repeat the last index instead of using the reference to
                 %                 pad (worse convergence)
