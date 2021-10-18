@@ -4,8 +4,11 @@ Matlab iLQR class which will solve for the optimal set of inputs and gains to ge
 # ilqr_mpc
 Matlab iLQR mpc class which will take a trajectory as an input, and solve for the optimal tracking input for a given horizon.
 
+The mpc does not need to be ran on every timestep, and instead the feedback law and trajectory produced by the current solve can be used as a stabilizing controller for the rest of the horizon.
+
 # Systems
 ## Acrobot
+Double pendulum model without actuation on the first link.
 
 ## Car
 A kinematic bicycle model where the inputs are steering velocity and linear acceleration.
