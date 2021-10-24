@@ -84,18 +84,18 @@ for ii=1:duration
     % Update the current state
     current_state = next_state;
     
-    %     % Plot MPC
-    %     figure(4);
-    %     h1 = plot(states(:,2),states(:,4),'k-');
-    %     hold on
-    %
-    %     h3 = plot(states(ii:(ii+horizon-1),2),states(ii:(ii+horizon-1),4),'ro');
-    %     h2 = plot(new_states(:,2),new_states(:,4),'b.');
-    %     h4 = plot(states_solve(:,2),states_solve(:,4),'b--');
-    %     legend([h1,h2,h3,h4],"Reference Trajectory","Perturbed Trajectory","Reference Horizon","MPC Horizon");
-    %     xlabel('$$\theta$$');
-    %     ylabel('$$\dot{\theta}$$');
-    %     hold off
+        % Plot MPC
+        figure(4);
+        h1 = plot(states(:,2),states(:,4),'k-');
+        hold on
+    
+        h3 = plot(states(ii:(ii+horizon-1),2),states(ii:(ii+horizon-1),4),'ro');
+        h2 = plot(new_states(:,2),new_states(:,4),'b.');
+        h4 = plot(states_solve(:,2),states_solve(:,4),'b--');
+        legend([h1,h2,h3,h4],"Reference Trajectory","Perturbed Trajectory","Reference Horizon","MPC Horizon");
+        xlabel('$$\theta$$');
+        ylabel('$$\dot{\theta}$$');
+        hold off
     
     
 end

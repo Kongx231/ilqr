@@ -239,9 +239,11 @@ classdef ilqr_mpc < handle
                 current_u_des = self.target_inputs_(ii+idx_adjustment,:)';
                 
                 % Get the gradient and hessian of the current cost
-                l_x = self.Q_k_*(current_x_des-current_x); % Defined as zero right now because there is no desired trajectory
+%                 l_x = self.Q_k_*(current_x_des-current_x); % Defined as zero right now because there is no desired trajectory
+                l_x = self.Q_k_*(current_x-current_x_des); % Defined as zero right now because there is no desired trajectory
                 l_xx = self.Q_k_; % Q_k should also be zero here
-                l_u = self.R_k_*(current_u_des-current_u);
+%                 l_u = self.R_k_*(current_u_des-current_u)+self.R_k_reg_*current_u;
+                l_u = self.R_k_*(current_u-current_u_des);
                 l_uu = self.R_k_;
                 
                 % Get the jacobian of the discretized dynamics

@@ -9,16 +9,19 @@ duration = size(inputs,1);
 
 % Define weighting matrices
 n_states = size(states,2); n_inputs = size(inputs,2);
-Q_k = 0.01*eye(n_states); % We care most about reaching the end goal of swinging up
+Q_k = 0.001*eye(n_states); % We care most about reaching the end goal of swinging up
 R_k = 0.01*eye(n_inputs);
+R_k_reg = 0.00*eye(n_inputs); % Add regularization on overall input usage, should be relatively small
 
 % Weight position more than velocity because velocities are generally
 % bigger
+% Q_T = 100*eye(n_states);
+% Q_T(2,2) = 10;
 Q_T = 100*eye(n_states);
 Q_T(2,2) = 10;
 
 % Set the mpc horizon
-horizon = 50;
+horizon = 150;
 % Set max numebr of iterations
 n_iterations = 10;
 
@@ -26,7 +29,7 @@ n_iterations = 10;
 states = [states;repmat(states(end,:),horizon,1)];
 inputs = [inputs;repmat(inputs(end,:),horizon,1)];
 
-ilqr_mpc_ = ilqr_mpc(states,inputs,dt,horizon,@calc_f_disc,@calc_A_disc,@calc_B_disc,Q_k,R_k,Q_T,parameters,n_iterations);
+ilqr_mpc_ = ilqr_mpc(states,inputs,dt,horizon,@calc_f_disc,@calc_A_disc,@calc_B_disc,Q_k,R_k,R_k_reg,Q_T,parameters,n_iterations);
 
 % Simulate with a perturbation
 new_states = zeros(duration+1,size(states,2));
@@ -63,11 +66,19 @@ for ii=1:duration
     figure(4);
     h1 = plot(states(:,1),states(:,2),'k-');
     hold on
+    
+    h3 = plot(states(ii:(ii+horizon-1),1),states(ii:(ii+horizon-1),2),'ro');
     h2 = plot(new_states(:,1),new_states(:,2),'b.');
-    legend([h1,h2],"Reference Trajectory","Perturbed Trajectory");
+    h4 = plot(states_solve(:,1),states_solve(:,2),'b--');
+    legend([h1,h2,h3,h4],"Reference Trajectory","Perturbed Trajectory","Reference Horizon","MPC Horizon");
     xlabel('$$\theta$$');
     ylabel('$$\dot{\theta}$$');
     hold off
+
+%     figure(5);
+%     hold on
+%     plot(inputs_solve);
+%     pause(0.1);
     
 end
 figure(1);

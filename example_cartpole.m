@@ -3,18 +3,20 @@ symbolic_dynamics_cartpole();
 % Initialize timings
 dt = 0.005;
 start_time = 0;
-end_time = 5;
+end_time = 1;
+% end_time = 5;
 time_span = start_time:dt:end_time;
 
 % Set desired state
 n_states = 4;
 n_inputs = 1;
-init_state = [0;0;0;0]; % Define the initial state to be the origin 
-target_state = [0;pi;0;0]; % Swing the pole up and end at the x origin with zero velocities
+init_state = [0;pi;0;0]; % Define the initial state to be the origin 
+target_state = [0.5;pi;0;0]; % Swing the pole up and end at the x origin with zero velocities
 
 % Seed with random inputs centered about 0
 rng(1);
-initial_guess = 0.5*randn(size(time_span,2),n_inputs); 
+initial_guess = 0.05*randn(size(time_span,2),n_inputs); 
+% initial_guess = 0.5*randn(size(time_span,2),n_inputs); 
 
 % Define weighting matrices
 Q_k = zeros(n_states,n_states); % zero weight to penalties along a trajectory since we are finding a trajectory
@@ -38,7 +40,7 @@ ilqr_ = ilqr(init_state,target_state,initial_guess,dt,start_time,end_time,@calc_
 % Solve
 [states,inputs,k_feedforward,K_feedback,final_cost] = ilqr_.solve();
 
-save('cartpole-swingup-trajectory.mat','states','inputs','dt','parameters','K_feedback','target_state');
+save('cartpole-translate-trajectory.mat','states','inputs','dt','parameters','K_feedback','target_state');
 
 figure(1);
 plot(ilqr_.states_(:,2),ilqr_.states_(:,4));
