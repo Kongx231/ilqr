@@ -9,13 +9,13 @@ duration = size(inputs,1);
 
 % Define weighting matrices
 n_states = size(states,2); n_inputs = size(inputs,2);
-Q_k = 0.001*eye(n_states); % We care most about reaching the end goal of swinging up
-R_k = 0.01*eye(n_inputs);
+Q_k = 0.01*eye(n_states); % We care most about reaching the end goal of swinging up
+R_k = 0.005*eye(n_inputs);
 
 % Weight position more than velocity because velocities are generally
 % bigger
 Q_T = 1000*eye(n_states);
-% Q_T(2,2) = 10;
+Q_T(2,2) = 10;
 
 % Set the mpc horizon
 horizon = 200;
@@ -41,7 +41,7 @@ new_states(1,:) = current_state';
 mpc_states = zeros(duration,horizon+1,size(states,2));
 mpc_inputs = zeros(duration,horizon,size(inputs,2));
 
-solve_interval = 50;
+solve_interval = 10;
 mpc_counter = solve_interval;
 for ii=1:duration
     % Get the current gains and compute the feedforward and
@@ -74,7 +74,7 @@ for ii=1:duration
     % Update the current state
     current_state = next_state;
     
-    % Comment in to view mpc solves (WAY SLOWER!)
+% %     Comment in to view mpc solves (WAY SLOWER!)
 %     figure(4);
 %     h1 = plot(states(:,1),states(:,2),'k-');
 %     hold on
@@ -86,6 +86,11 @@ for ii=1:duration
 %     xlabel('$$\theta_1$$');
 %     ylabel('$$\theta_2$$');
 %     hold off
+% 
+%     figure(5);
+%     hold on
+%     plot(inputs_solve);
+%     pause(0.1);
     
 end
 figure(1);
