@@ -1,3 +1,5 @@
+I am actively developing these classes and trying to add more examples. Please always pull the most recent changes.
+
 # ilqr
 Matlab iLQR class which will solve for the optimal set of inputs and gains to get to a desired state
 
