@@ -11,7 +11,6 @@ duration = size(inputs,1);
 n_states = size(states,2); n_inputs = size(inputs,2);
 Q_k = 0.001*eye(n_states); % We care most about reaching the end goal of swinging up
 R_k = 0.01*eye(n_inputs);
-R_k_reg = 0.00*eye(n_inputs); % Add regularization on overall input usage, should be relatively small
 
 % Weight position more than velocity because velocities are generally
 % bigger
@@ -29,7 +28,7 @@ n_iterations = 10;
 states = [states;repmat(states(end,:),horizon,1)];
 inputs = [inputs;repmat(inputs(end,:),horizon,1)];
 
-ilqr_mpc_ = ilqr_mpc(states,inputs,dt,horizon,@calc_f_disc,@calc_A_disc,@calc_B_disc,Q_k,R_k,R_k_reg,Q_T,parameters,n_iterations);
+ilqr_mpc_ = ilqr_mpc(states,inputs,dt,horizon,@calc_f_disc,@calc_A_disc,@calc_B_disc,Q_k,R_k,Q_T,parameters,n_iterations);
 
 % Simulate with a perturbation
 new_states = zeros(duration+1,size(states,2));

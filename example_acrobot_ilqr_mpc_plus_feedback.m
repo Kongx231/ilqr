@@ -87,10 +87,16 @@ for ii=1:duration
 %     ylabel('$$\theta_2$$');
 %     hold off
 % 
-%     figure(5);
-%     hold on
-%     plot(inputs_solve);
-%     pause(0.1);
+    figure(5);
+    hold on
+    plot(inputs_solve);
+
+    
+        figure(6);
+    hold on
+    plot(states_solve(:,1));
+
+    pause(0.1);
     
 end
 figure(1);

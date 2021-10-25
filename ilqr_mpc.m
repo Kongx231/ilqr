@@ -30,6 +30,10 @@ classdef ilqr_mpc < handle
         target_inputs_
         horizon_
         current_idx_
+        % Expected cost reductions
+        expected_cost_redu_
+        expected_cost_redu_grad_
+        expected_cost_redu_hess_
     end
     methods
         % Constructor
@@ -95,6 +99,11 @@ classdef ilqr_mpc < handle
                 end
                 horizon_end_idx = current_idx+self.n_timesteps_;
                 
+%                 self.inputs_ = [self.inputs_((span_from_last_call+1):end,:);
+%                     self.target_inputs_((horizon_end_idx-span_from_last_call):(horizon_end_idx-1),:)];
+%                 self.states_ = [self.states_((span_from_last_call+1):end,:);
+%                     self.target_states_((horizon_end_idx-span_from_last_call+1):horizon_end_idx,:)];
+
                 self.inputs_ = [self.inputs_((span_from_last_call+1):end,:);
                     self.target_inputs_((horizon_end_idx-span_from_last_call):(horizon_end_idx-1),:)];
                 self.states_ = [self.states_((span_from_last_call+1):end,:);
@@ -105,7 +114,8 @@ classdef ilqr_mpc < handle
                 %                 self.inputs_ = [self.inputs_(2:end,:); self.inputs_(end,:)];
                 %                 self.states_ = [self.states_(2:end,:); self.states_(end,:)];
                 
-                % Repeat the gain
+                % Repeat the gain (or we can have the gain solved for the
+                % entire trajectory and use that)
 %                 self.K_feedback_ = [self.K_feedback_(2:end,:,:); self.K_feedback_(end,:,:)];
                 repeated_gain = repmat(self.K_feedback_(end,:,:),span_from_last_call,1,1);
                 self.K_feedback_ = [self.K_feedback_((span_from_last_call):end,:,:);repeated_gain];
@@ -127,6 +137,7 @@ classdef ilqr_mpc < handle
             low_learning_rate = 0.05; % if learning rate drops to this value stop the optimization
             
             low_expected_reduction = 1e-3; % Determines optimality
+            armijo_threshold = 0.1; % Determines if current line search solve is good (this is typically labeled as "c")
             
             for ii = 1:self.n_iterations_
                 disp(['Starting iteration: ',num2str(ii)]);
@@ -148,8 +159,11 @@ classdef ilqr_mpc < handle
                     % Compute forward pass
                     [new_states,new_inputs]=forwards_pass(self,learning_rate);
                     new_cost = self.compute_cost(new_states,new_inputs);
-                    armijo_flag = current_cost - new_cost > 0; % Not real armijo condition, just checking if cost decreased
-                    %                     disp(['New cost: ',num2str(new_cost),', Prev cost: ',num2str(current_cost)]);
+                    % Calculate armijo condition
+                    cost_difference = (current_cost - new_cost);
+                    expected_cost_redu = learning_rate*self.expected_cost_redu_grad_ + learning_rate^2*self.expected_cost_redu_hess_;
+                    armijo_flag = cost_difference/expected_cost_redu > armijo_threshold;
+                    
                     if(armijo_flag == 1)
                         % Accept the new trajectory if armijo condition is
                         % met
@@ -224,6 +238,8 @@ classdef ilqr_mpc < handle
             K_trj = zeros(self.n_timesteps_,self.n_inputs_,self.n_states_);
             % Initialize expected cost reduction
             expected_cost_redu = 0;
+            expected_cost_redu_grad = 0;
+            expected_cost_redu_hess = 0;
             
             idx_adjustment = self.current_idx_-1;
             % Iitialize gradient and hessian of the value function
@@ -269,9 +285,23 @@ classdef ilqr_mpc < handle
                 k_trj(ii,:) = k';
                 K_trj(ii,:,:) = K;
                 
-                current_cost_reduction = -Q_u'*k - 0.5 * k'*(Q_uu)*k;
+                % Get the current expected cost reduction from each source
+                current_cost_reduction_grad = -Q_u'*k;
+                current_cost_reduction_hess = 0.5 * k'*(Q_uu)*k;
+                current_cost_reduction = current_cost_reduction_grad + current_cost_reduction_hess;
+                
+                % Store each component separately for computing armijo
+                % condition
+                expected_cost_redu_grad = expected_cost_redu_grad + current_cost_reduction_grad;
+                expected_cost_redu_hess = expected_cost_redu_hess + current_cost_reduction_hess;
                 expected_cost_redu = expected_cost_redu+current_cost_reduction;
             end
+            % Store expected cost reductions
+            self.expected_cost_redu_grad_ = expected_cost_redu_grad;
+            self.expected_cost_redu_hess_ = expected_cost_redu_hess;
+            self.expected_cost_redu_ = expected_cost_redu;
+            
+            % Store gain schedule
             self.k_feedforward_= k_trj;
             self.K_feedback_ = K_trj;
         end
