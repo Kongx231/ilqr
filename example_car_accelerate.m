@@ -10,8 +10,10 @@ time_span = start_time:dt:end_time;
 % Set desired state
 n_states = 4;
 n_inputs = 2;
-init_state = [0;0;0;pi/2]; % Define the initial state to be the origin with no velocity and straight heading
-target_state = [2;2;0;0]; % Get to 3 meters to the right facing up and stop
+init_state = [0;0;0;0]; % Define the initial state to be the origin with no velocity and straight heading
+target_vel = 1;
+time_elapsed = end_time-start_time;
+target_state = [time_elapsed*target_vel;0;target_vel;0]; % Get to 3 meters to the right facing up and stop
 
 % Set initial guess as zeros
 initial_guess = [0*ones(size(time_span,2),1),0*ones(size(time_span,2),1)];
@@ -36,7 +38,8 @@ n_iterations = 50;
 ilqr_ = ilqr(init_state,target_state,initial_guess,dt,start_time,end_time,@calc_f_disc,@calc_A_disc,@calc_B_disc,Q_k,R_k,Q_T,parameters,n_iterations);
 % Solve
 [states,inputs,k_feedforward,K_feedback,final_cost] = ilqr_.solve();
-save('car-park-trajectory.mat','states','inputs','dt','parameters','k_feedforward','K_feedback','target_state'); % Save trajectory to track later
+
+save('car-accelerate-trajectory.mat','states','inputs','dt','parameters','k_feedforward','K_feedback','target_state'); % Save trajectory to track later
 
 figure(1);
 plot(ilqr_.states_(:,1),ilqr_.states_(:,2));
@@ -45,5 +48,8 @@ plot(target_state(1),target_state(2),'ro');
 xlabel('x');
 ylabel('y');
 
-figure(2);
-animate_car(states)
+figure(3);
+plot(inputs(:,1))
+
+% figure(2);
+% animate_car(states)
