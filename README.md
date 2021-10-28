@@ -1,12 +1,12 @@
 I am actively developing these classes and trying to add more examples. Please always pull the most recent changes.
 # Languages
 ## Matlab
-Original code is written in matlab
+Original code is written in matlab. No installation is needed, the matlab files are located in the matlab directory.
 
 ## Python
 To make this code more open source, I've also started porting it over to python as well
 ### Installation
-This package makes use of numpy, sympy, and matplotlib.
+This package makes use of numpy, sympy, and matplotlib. The python files are located in the python directory.
 ```
 pip install numpy
 pip install matplotlib
