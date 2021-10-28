@@ -21,6 +21,9 @@ iLQR class which will solve for the optimal set of inputs and gains to get to a 
 iLQR mpc class which will take a trajectory as an input, and solve for the optimal tracking input for a given horizon.
 The mpc does not need to be ran on every timestep, and instead the feedback law and trajectory produced by the current solve can be used as a stabilizing controller for the rest of the horizon.
 
+## ltvlqr
+ltvlqr function solves for the optimal gain schedule givena trajectory. Use this function, if you already have a trajectory that you would like to track.
+
 # Systems
 ## Acrobot
 Double pendulum model without actuation on the first link.
