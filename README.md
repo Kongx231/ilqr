@@ -5,6 +5,13 @@ Original code is written in matlab
 
 ## Python
 To make this code more open source, I've also started porting it over to python as well
+### Installation
+This package makes use of numpy, sympy, and matplotlib.
+```
+pip install numpy
+pip install matplotlib
+pip install sympy
+```
 
 # Main classes and functions
 ## ilqr
