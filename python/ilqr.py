@@ -168,10 +168,10 @@ class ilqr:
         low_expected_reduction = 1e-3 # Determines optimality
         armijo_threshold = 0.1 # Determines if current line search solve is good (this is typically labeled as "c")
         for ii in range(0,self.n_iterations_):
-            print('Starting iteration: ',ii)
+            print('Starting iteration: ',ii,', Current cost: ',current_cost)
             # Compute the backwards pass
             (k_feedforward,K_feedback,expected_reduction) = self.backwards_pass()
-            
+            print('Expected cost reduction: ',expected_reduction)
             if(abs(expected_reduction)<low_expected_reduction):
                 # If the expected reduction is low, then end the
                 # optimization
@@ -200,7 +200,7 @@ class ilqr:
                 else:
                     # If no improvement, decrease the learning rate
                     learning_rate = learning_speed*learning_rate
-                    print('Reducing learning rate to: ',learning_rate)
+                    # print('Reducing learning rate to: ',learning_rate)
             if(learning_rate<low_learning_rate):
                 # If learning rate is low, then stop optimization
                 print("Stopping optimization, low learning rate")
