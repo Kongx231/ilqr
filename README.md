@@ -4,7 +4,7 @@ I am actively developing these classes and trying to add more examples. Please a
 Original code is written in matlab. No installation is needed, the matlab files are located in the matlab directory.
 
 ## Python
-To make this code more open source, I've also started porting it over to python as well
+To make this code more open source, I've also started porting it over to python as well. However, python is currently significantly slower due to sympy's lambdify function.
 ### Installation
 This package makes use of numpy, sympy, and matplotlib. The python files are located in the python directory.
 ```
