@@ -96,3 +96,28 @@ matlabFunction(B_disc,'File','calc_B_disc','Vars',[{states},{inputs},{dt},{param
 
 matlabFunction(f,'File','calc_f','Vars',[{states},{inputs},{parameters}])
 matlabFunction(f_disc,'File','calc_f_disc','Vars',[{states},{inputs},{dt},{parameters}])
+
+%% Write constraints
+syms F_z_min F_z_max mu F_y F_x F_z real
+forces = [F_x;F_y;F_z];
+% Want in the form of Ax <= b where x are the forces
+% -mu*F_z < F_x < mu*F_z;
+F_x_max = F_x - mu*F_z ;
+F_x_min = -F_x - mu*F_z;
+F_x_max_A = jacobian(F_x_max,forces);
+F_x_min_A = jacobian(F_x_min,forces);
+
+% -mu*F_z < F_y < mu*F_z;
+F_y_max = F_y - mu*F_z ;
+F_y_min = -F_y - mu*F_z;
+F_y_max_A = jacobian(F_y_max,forces);
+F_y_min_A = jacobian(F_y_min,forces);
+
+
+% I think for swing legs, if we just set upper and lower bounds to be 0 and
+% init it to be zero would be the best computationally 
+swing_leg_lb = sym([0;0;0]);
+swing_leg_ub = sym([0;0;0]);
+
+stance_leg_lb = [-F_z_max;-F_z_max;F_z_min];
+stance_leg_ub = [F_z_max;F_z_max;F_z_max];

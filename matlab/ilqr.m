@@ -136,7 +136,7 @@ classdef ilqr < handle
             states = zeros(self.n_timesteps_+1,self.n_states_);
             inputs = zeros(self.n_timesteps_,self.n_inputs_);
             current_state = self.init_state_;
-            
+            states(1,:) = current_state';
             for ii=1:self.n_timesteps_
                 current_input = self.inputs_(ii,:)';
                 next_state = self.f_(current_state,current_input,self.dt_,self.parameters_);
