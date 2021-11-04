@@ -31,7 +31,8 @@ Double pendulum model without actuation on the first link.
 ## Car
 A kinematic bicycle model where the inputs are steering velocity and linear acceleration.
 
-[![Car parking using iLQR MPC](http://img.youtube.com/vi/wN9ARncBKoo&ab_channel=NathanKong/0.jpg)](https://www.youtube.com/watch?v=wN9ARncBKoo&ab_channel=NathanKong "Car parking using iLQR MPC")
+### Tracking car parking behavior using iterative Linear Quadratic Regulator as MPC
+[![Car parking using iLQR MPC](https://img.youtube.com/vi/wN9ARncBKoo/0.jpg)](https://www.youtube.com/watch?v=wN9ARncBKoo&ab_channel=NathanKong "Car parking using iLQR MPC")
 
 ## Cartpole
 A cart pole model where the input is a thruster on the cart.
@@ -39,5 +40,10 @@ A cart pole model where the input is a thruster on the cart.
 ## Pendulum
 Single pendulum with torque on the joint as input.
 
+### Visualizing optimal pendulum swing up for iLQR
+[![Visualizing optimal pendulum swing up for iLQR](https://img.youtube.com/vi/h998mOwAlrI/0.jpg)](https://www.youtube.com/watch?v=h998mOwAlrI "Visualizing optimal pendulum swing up for iLQR")
+
+### Tracking pendulum swing up trajectory with iLQR MPC
+[![Tracking pendulum swing up trajectory with iLQR MPC](https://img.youtube.com/vi/RiQ6XPwgSgM/0.jpg)](https://www.youtube.com/watch?v=RiQ6XPwgSgM "Tracking pendulum swing up trajectory with iLQR MPC")
 ## Quadcopter
 Quadcopter in full 3D space where the inputs are the 4 thrusters.
