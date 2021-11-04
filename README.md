@@ -31,6 +31,8 @@ Double pendulum model without actuation on the first link.
 ## Car
 A kinematic bicycle model where the inputs are steering velocity and linear acceleration.
 
+[![Car parking using iLQR MPC](http://img.youtube.com/vi/wN9ARncBKoo&ab_channel=NathanKong/0.jpg)](https://www.youtube.com/watch?v=wN9ARncBKoo&ab_channel=NathanKong "Car parking using iLQR MPC")
+
 ## Cartpole
 A cart pole model where the input is a thruster on the cart.
 
