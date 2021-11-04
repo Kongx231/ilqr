@@ -28,6 +28,9 @@ Linear time varying linear quadratic regulator (ltvlqr) function solves for the 
 ## Acrobot
 Double pendulum model without actuation on the first link.
 
+### Creaing optimal swing up for acrobot
+[![Optimal swing up for acrobot](https://img.youtube.com/vi/4xQUNSdZmvo/0.jpg)](https://www.youtube.com/watch?v=4xQUNSdZmvo&ab_channel=NathanKong "Optimal swing up for acrobot")
+
 ## Car
 A kinematic bicycle model where the inputs are steering velocity and linear acceleration.
 
@@ -36,6 +39,9 @@ A kinematic bicycle model where the inputs are steering velocity and linear acce
 
 ## Cartpole
 A cart pole model where the input is a thruster on the cart.
+
+### Creating optimal swing up for cartpole 
+[![Creating optimal swing up for cartpole](https://img.youtube.com/vi/aqu8GfT1iwU/0.jpg)](https://www.youtube.com/watch?v=aqu8GfT1iwU "Creating optimal swing up for cartpole")
 
 ## Pendulum
 Single pendulum with torque on the joint as input.
