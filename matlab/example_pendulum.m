@@ -46,6 +46,6 @@ legend([h1,h2],"Final Trajectory","Target State");
 xlabel('$$\theta$$');
 ylabel('$$\dot{\theta}$$');
 
-figure(2);
-animate_pendulum(states,dt)
+% figure(2);
+% animate_pendulum(states,dt)
 

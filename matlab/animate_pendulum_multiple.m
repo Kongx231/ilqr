@@ -1,4 +1,4 @@
-function animate_pendulum(states,dt,skip)
+function v = animate_pendulum_multiple(states,dt,skip,v)
 if(nargin<3)
     skip = 1;
 end
@@ -6,10 +6,12 @@ bRecord = 1;
 %  bRecord = 0; % Uncomment this to not save a video
 if bRecord
     % Define video recording parameters
-    Filename = 'pendulum_animation';
-    v = VideoWriter(Filename, 'MPEG-4');
-    myVideo.Quality = 100;
-    open(v);
+    Filename = 'pendulum_animation_iterations';
+    if(nargin<4)
+        v = VideoWriter(Filename, 'MPEG-4');
+        myVideo.Quality = 100;
+        open(v);
+    end
 end
 
 % Define axis window
@@ -51,6 +53,6 @@ for ii = 1:skip:size(states,1)
     end
 end
 
-if bRecord
-    close(v);
-end
+% if bRecord
+%     close(v);
+% end

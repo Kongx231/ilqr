@@ -61,7 +61,7 @@ for ii = 1:length(x)
     end
     addpoints(h,q1, 0);
     addpoints(hh,q1+L*sin(q2),-L*cos(q2));
-    title(['Time = ',num2str(ii*dt),'s'])
+%     title(['Time = ',num2str(ii*dt),'s'])
     drawnow limitrate
     if(mod(ii,10) == 1 && framerecord == 1)
         saveas(gcf,['cartpoleframes\frame',num2str(ii),'.png'])

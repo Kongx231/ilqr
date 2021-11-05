@@ -10,8 +10,8 @@ time_span = start_time:dt:end_time;
 % Set desired state
 n_states = 4;
 n_inputs = 1;
-init_state = [0;pi;0;0]; % Define the initial state to be the origin 
-target_state = [0.5;pi;0;0]; % Swing the pole up and end at the x origin with zero velocities
+init_state = [0;0;0;0]; % Define the initial state to be the origin 
+target_state = [0.0;pi;0;0]; % Swing the pole up and end at the x origin with zero velocities
 
 % Seed with random inputs centered about 0
 rng(1);
@@ -24,10 +24,11 @@ R_k = 0.0001*eye(n_inputs);
 
 Q_T = 1*eye(n_states);
 Q_T(2,2) = 100;
+Q_T(1,1) = 10;
 
 % Parameters of the cart pole
-cart_mass = 1;
-pole_mass = 1;
+cart_mass = 0.1;
+pole_mass = 0.1;
 gravity = 9.8;
 pole_length = 1;
 parameters = [cart_mass,pole_mass,pole_length,gravity];
