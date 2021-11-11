@@ -101,133 +101,137 @@ classdef ilqr < handle
                     armijo_flag = cost_difference/expected_cost_redu > armijo_threshold;
                     if(armijo_flag == 1)
 %                         %%%%%%%%%%%%% PLOT %%%%%%%%%
-%                         %                         figure(10);
-%                         %                         sgtitle(['Iteration: ',num2str(ii),', Expected Redu: ',num2str(expected_reduction)]);
-%                         %                         subplot(2,2,1)
-%                         %                         plot(1:self.n_timesteps_+1,self.states_(:,1),'k-')
-%                         %                         hold on
-%                         %                         plot(1:self.n_timesteps_+1,new_states(:,1),'b--')
-%                         %                         skip = 10;
-%                         %                         quiver_indexes = 1:skip:self.n_timesteps_+1;
-%                         %                         quiver((quiver_indexes)',self.states_(quiver_indexes,1),0*self.V_x_tensor_(quiver_indexes,1),-0.05*self.V_x_tensor_(quiver_indexes,1),0,'r')
-%                         %                         xlabel("Timestep")
-%                         %                         title("Position");
-%                         %                         hold off
-%                         %
-%                         %                         subplot(2,2,2)
-%                         %                         plot(1:self.n_timesteps_+1,self.states_(:,2),'k-')
-%                         %                         hold on
-%                         %                         plot(1:self.n_timesteps_+1,new_states(:,2),'b--')
-%                         %                         skip = 10;
-%                         %                         quiver_indexes = 1:skip:self.n_timesteps_+1;
-%                         %                         quiver((quiver_indexes)',self.states_(quiver_indexes,2),0*self.V_x_tensor_(quiver_indexes,2),-0.1*self.V_x_tensor_(quiver_indexes,2),0,'r')
-%                         %                         xlabel("Timestep")
-%                         %                         title("Velocity");
-%                         %                         hold off
-%                         %
-%                         %                         subplot(2,2,3)
-%                         %                         plot(1:self.n_timesteps_,self.inputs_(:,1),'k-')
-%                         %                         hold on
-%                         %                         plot(1:self.n_timesteps_,new_inputs(:,1),'b--')
-%                         %                         xlabel("Timestep")
-%                         %                         title("Input");
-%                         %                         hold off
-%                         %%%%%%%%%%%%% PLOT %%%%%%%%%
-%                         figure(10);
-%                         sgtitle(['Iteration: ',num2str(ii),', Expected Redu: ',num2str(expected_reduction)]);
-%                         %                         subplot(2,2,1)
-%                         %                         xlabel("Timestep")
-%                         %                         title("Position");
-%                         %                         subplot(2,2,2)
-%                         %                         xlabel("Timestep")
-%                         %                         title("Velocity");
-%                         %
-%                         %                         subplot(2,2,3)
-%                         %                         xlabel("Timestep")
-%                         %                         title("Input");
-%                         
-%                         delay_time = 0.25;
-%                         
-%                         subplot(2,2,1)
-%                         plot(1:self.n_timesteps_+1,self.states_(:,1),'k-')
-%                         hold on
-%                         xlabel("Timestep")
-%                         title("Position");
-%                         
-%                         %                         pause(delay_time);
-%                         
-%                         subplot(2,2,2)
-%                         plot(1:self.n_timesteps_+1,self.states_(:,2),'k-')
-%                         hold on
-%                         xlabel("Timestep")
-%                         title("Velocity");
-%                         %                         pause(delay_time);
-%                         
-%                         subplot(2,2,3)
-%                         plot(1:self.n_timesteps_,self.inputs_(:,1),'k-')
-%                         hold on
-%                         xlabel("Timestep")
-%                         title("Input");
-%                         %                         pause(delay_time);
-%                         
-%                         
-%                         pause(2*delay_time);
-%                         % Plot backwards
-%                                                 subplot(2,2,1)
-%                         skip = 10;
-%                         quiver_indexes = 1:skip:self.n_timesteps_+1;
-%                         quiver((quiver_indexes)',self.states_(quiver_indexes,1),0*self.V_x_tensor_(quiver_indexes,1),-0.1*self.V_x_tensor_(quiver_indexes,1),0,'r')
-%                         pause(delay_time);
-%                         
-%                         
-%                         
-%                         
-%                         subplot(2,2,2)
-%                         skip = 10;
-%                         quiver_indexes = 1:skip:self.n_timesteps_+1;
-%                         quiver((quiver_indexes)',self.states_(quiver_indexes,2),0*self.V_x_tensor_(quiver_indexes,2),-0.5*self.V_x_tensor_(quiver_indexes,2),0,'r')
-%                         pause(delay_time);
-%                         
-% 
-%                                                 subplot(2,2,3)
-%                         skip = 10;
-%                         quiver_indexes_input = 1:skip:self.n_timesteps_;
-%                         quiver((quiver_indexes_input)',self.inputs_(quiver_indexes_input,1),0*self.k_feedforward_(quiver_indexes_input),new_inputs(quiver_indexes_input,1)-self.inputs_(quiver_indexes_input,1),0,'r')
-%                         pause(2*delay_time);
-%                         
-%                         % Plot forwards
-%                         subplot(2,2,1)
-%                         plot(1:self.n_timesteps_+1,new_states(:,1),'b--')
-%                         
-%                         hold off
-%                         pause(delay_time);
-%                         subplot(2,2,2)
-%                         
-%                         
-%                         plot(1:self.n_timesteps_+1,new_states(:,2),'b--')
-%                         hold off
-%                         pause(delay_time);
-%                         subplot(2,2,3)
-%                         plot(1:self.n_timesteps_,new_inputs(:,1),'b--')
-%                         
-%                         hold off
-%                         pause(2*delay_time);
-%                         subplot(2,2,4)
-%                         skip_frames = 20;
-%                         
-% 
-%                         
-%                         %                         animate_pendulum(new_states,self.dt_,skip_frames)
-%                         if(ii == 1)
-%                             v = animate_pendulum_multiple(new_states,self.dt_,skip_frames);
-%                         else
-%                             v = animate_pendulum_multiple(new_states,self.dt_,skip_frames,v);
-%                         end
-%                         hold off
+                        %                         figure(10);
+                        %                         sgtitle(['Iteration: ',num2str(ii),', Expected Redu: ',num2str(expected_reduction)]);
+                        %                         subplot(2,2,1)
+                        %                         plot(1:self.n_timesteps_+1,self.states_(:,1),'k-')
+                        %                         hold on
+                        %                         plot(1:self.n_timesteps_+1,new_states(:,1),'b--')
+                        %                         skip = 10;
+                        %                         quiver_indexes = 1:skip:self.n_timesteps_+1;
+                        %                         quiver((quiver_indexes)',self.states_(quiver_indexes,1),0*self.V_x_tensor_(quiver_indexes,1),-0.05*self.V_x_tensor_(quiver_indexes,1),0,'r')
+                        %                         xlabel("Timestep")
+                        %                         title("Position");
+                        %                         hold off
+                        %
+                        %                         subplot(2,2,2)
+                        %                         plot(1:self.n_timesteps_+1,self.states_(:,2),'k-')
+                        %                         hold on
+                        %                         plot(1:self.n_timesteps_+1,new_states(:,2),'b--')
+                        %                         skip = 10;
+                        %                         quiver_indexes = 1:skip:self.n_timesteps_+1;
+                        %                         quiver((quiver_indexes)',self.states_(quiver_indexes,2),0*self.V_x_tensor_(quiver_indexes,2),-0.1*self.V_x_tensor_(quiver_indexes,2),0,'r')
+                        %                         xlabel("Timestep")
+                        %                         title("Velocity");
+                        %                         hold off
+                        %
+                        %                         subplot(2,2,3)
+                        %                         plot(1:self.n_timesteps_,self.inputs_(:,1),'k-')
+                        %                         hold on
+                        %                         plot(1:self.n_timesteps_,new_inputs(:,1),'b--')
+                        %                         xlabel("Timestep")
+                        %                         title("Input");
+                        %                         hold off
+                        %%%%%%%%%%%%% PLOT %%%%%%%%%
+                        figure(10);
+                        sgtitle(['Iteration: ',num2str(ii),', Expected Redu: ',num2str(expected_reduction)]);
+                        %                         subplot(2,2,1)
+                        %                         xlabel("Timestep")
+                        %                         title("Position");
+                        %                         subplot(2,2,2)
+                        %                         xlabel("Timestep")
+                        %                         title("Velocity");
+                        %
+                        %                         subplot(2,2,3)
+                        %                         xlabel("Timestep")
+                        %                         title("Input");
+                        
+                        delay_time = 0.0;
+                        
+                        subplot(2,2,1)
+                        plot(1:self.n_timesteps_+1,self.states_(:,1),'k-')
+                        hold on
+                        xlabel("Timestep")
+                        title("Position");
+                        
+                        %                         pause(delay_time);
+                        
+                        subplot(2,2,2)
+                        plot(1:self.n_timesteps_+1,self.states_(:,2),'k-')
+                        hold on
+                        xlabel("Timestep")
+                        title("Velocity");
+                        %                         pause(delay_time);
+                        
+                        subplot(2,2,3)
+                        plot(1:self.n_timesteps_,self.inputs_(:,1),'k-')
+                        hold on
+                        xlabel("Timestep")
+                        title("Input");
+                        %                         pause(delay_time);
+                        
+                        
+                        pause(2*delay_time);
+                        % Plot backwards
+                                                subplot(2,2,1)
+                        skip = 10;
+                        quiver_indexes = 1:skip:self.n_timesteps_+1;
+                        quiver((quiver_indexes)',self.states_(quiver_indexes,1),0*self.V_x_tensor_(quiver_indexes,1),-0.1*self.V_x_tensor_(quiver_indexes,1),0,'r')
+                        pause(delay_time);
+                        
+                        
+                        
+                        
+                        subplot(2,2,2)
+                        skip = 10;
+                        quiver_indexes = 1:skip:self.n_timesteps_+1;
+                        quiver((quiver_indexes)',self.states_(quiver_indexes,2),0*self.V_x_tensor_(quiver_indexes,2),-0.5*self.V_x_tensor_(quiver_indexes,2),0,'r')
+                        pause(delay_time);
+                        
+
+                                                subplot(2,2,3)
+                        skip = 10;
+                        quiver_indexes_input = 1:skip:self.n_timesteps_;
+                        quiver((quiver_indexes_input)',self.inputs_(quiver_indexes_input,1),0*self.k_feedforward_(quiver_indexes_input),new_inputs(quiver_indexes_input,1)-self.inputs_(quiver_indexes_input,1),0,'r')
+                        pause(2*delay_time);
+                        
+                        % Plot forwards
+                        subplot(2,2,1)
+                        plot(1:self.n_timesteps_+1,new_states(:,1),'b--')
+                        
+                        hold off
+                        pause(delay_time);
+                        subplot(2,2,2)
+                        
+                        
+                        plot(1:self.n_timesteps_+1,new_states(:,2),'b--')
+                        hold off
+                        pause(delay_time);
+                        subplot(2,2,3)
+                        plot(1:self.n_timesteps_,new_inputs(:,1),'b--')
+                        
+                        hold off
+                        pause(2*delay_time);
+                        subplot(2,2,4)
+                        skip_frames = 20;
+                        
+
+                        
+                        %                         animate_pendulum(new_states,self.dt_,skip_frames)
+                        if(ii == 1)
+                            v = animate_pendulum_multiple(new_states,self.dt_,skip_frames);
+                        else
+                            v = animate_pendulum_multiple(new_states,self.dt_,skip_frames,v);
+                        end
+                        hold off
 %                         %%%%%%%%%%%%%%%%%%%%%%%%%%%%
                         % Accept the new trajectory if armijo condition is
                         % met
-                        
+%                         K = ltvlqr(self.states_,self.inputs_,self.A_,self.B_,self.Q_k_,self.R_k_,self.Q_T_,self.dt_,self.parameters_);
+%                         figure(1)
+%                         plot(reshape(self.K_feedback_(:,1,:),[1001,2]))
+%                         hold on
+%                         plot(reshape(K(:,1,:),[1001,2]),'k--')
                         
                         current_cost = new_cost;
                         self.states_ = new_states;
@@ -247,7 +251,7 @@ classdef ilqr < handle
             % Return the current trajectory
             states = self.states_;
             inputs = self.inputs_;
-%             close(v);
+            close(v);
         end
         function total_cost = compute_cost(self,states,inputs)
             % Initialize cost

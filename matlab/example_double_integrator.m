@@ -35,7 +35,8 @@ n_iterations = 50;
 lb = -1;
 ub = 1;
 % Construct ilqr object
-ilqr_ = constrained_ilqr(init_state,target_state,initial_guess,dt,start_time,end_time,@calc_f_disc,@calc_A_disc,@calc_B_disc,Q_k,R_k,Q_T,parameters,n_iterations,lb,ub);
+ilqr_ = ilqr(init_state,target_state,initial_guess,dt,start_time,end_time,@calc_f_disc,@calc_A_disc,@calc_B_disc,Q_k,R_k,Q_T,parameters,n_iterations);
+% ilqr_ = constrained_ilqr(init_state,target_state,initial_guess,dt,start_time,end_time,@calc_f_disc,@calc_A_disc,@calc_B_disc,Q_k,R_k,Q_T,parameters,n_iterations,lb,ub);
 % Solve
 [states,inputs,k_feedforward,K_feedback,final_cost] = ilqr_.solve();
 % save('double-integrator-trajectory.mat','states','inputs','dt','parameters','k_feedforward','K_feedback'); % Save trajectory to track later
