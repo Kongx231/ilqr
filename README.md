@@ -22,7 +22,13 @@ iLQR mpc class which will take a trajectory as an input, and solve for the optim
 The mpc does not need to be ran on every timestep, and instead the feedback law and trajectory produced by the current solve can be used as a stabilizing controller for the rest of the horizon.
 
 ## ltvlqr
-Linear time varying linear quadratic regulator (ltvlqr) function solves for the optimal gain schedule givena trajectory. Use this function, if you already have a trajectory that you would like to track.
+Linear time varying linear quadratic regulator (ltvlqr) function solves for the optimal gain schedule given a trajectory. Use this function, if you already have a trajectory that you would like to track.
+
+## h_ilqr
+Hybrid iLQR class which will solve the optimal set of inputs and gains for a hybrid system.
+
+## h_ltvlqr
+Coming soon: Schedule the piecewise smooth gain schedule given a hybrid trajectory.
 
 # Systems
 ## Acrobot
