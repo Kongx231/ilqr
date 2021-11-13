@@ -33,7 +33,7 @@ parameters = [mass,gravity];
 n_iterations = 50;
 
 % Specify optimality condition
-min_reduction = 1e-2;
+min_reduction = 1e-3;
 
 % Define optimization struct
 optimization_struct.init_state = init_state;
