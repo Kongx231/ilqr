@@ -68,8 +68,8 @@ dynamics_struct.parameters = parameters;
 
 ilqr_ = h_ilqr(optimization_struct,dynamics_struct);
 % Solve
-[states,inputs,k_feedforward,K_feedback,final_cost,expected_reduction] = ilqr_.solve();
-% save('single-bounce-trajectory.mat','states','inputs','dt','parameters','k_feedforward','K_feedback'); % Save trajectory to track later
+[states,inputs,modes,trajectory_struct,k_feedforward,K_feedback,final_cost,expected_reduction] = ilqr_.solve();
+save('ball-drop-circle-trajectory.mat','states','inputs','modes','trajectory_struct','dt','parameters','k_feedforward','K_feedback'); % Save trajectory to track later
 
 figure(1);
 h1 = plot(states(:,1),states(:,2),'k');

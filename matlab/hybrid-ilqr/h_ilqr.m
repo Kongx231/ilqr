@@ -34,6 +34,7 @@ classdef h_ilqr < handle
         n_iterations_
         
         % Hybrid storage
+        trajectory_struct_
         impact_states_
         reset_states_ 
         impact_idx_vec_
@@ -94,7 +95,7 @@ classdef h_ilqr < handle
             % Optimality condition
             self.min_reduction_ = optimization_problem_struct.min_reduction;
         end
-        function [states,inputs,k_feedforward,K_feedback,current_cost,expected_reduction] = solve(self)
+        function [states,inputs,modes,trajectory_struct,k_feedforward,K_feedback,current_cost,expected_reduction] = solve(self)
             % Compute the rollout to get the initial trajectory with the
             % initial guess
             [states,inputs] = self.rollout();
@@ -139,6 +140,7 @@ classdef h_ilqr < handle
                         self.states_ = new_states;
                         self.inputs_ = new_inputs;
                         self.modes_ = new_modes;
+                        self.trajectory_struct_ = new_trajectory_struct;
                         % Store new hybrid trajectory info
                         self.impact_states_ = new_trajectory_struct.impact_states_;
                         self.reset_states_ = new_trajectory_struct.reset_states_;
@@ -163,6 +165,8 @@ classdef h_ilqr < handle
             % Return the current trajectory
             states = self.states_;
             inputs = self.inputs_;
+            modes = self.modes_;
+            trajectory_struct = self.trajectory_struct_;
         end
         function total_cost = compute_cost(self,states,inputs)
             % Initialize cost
