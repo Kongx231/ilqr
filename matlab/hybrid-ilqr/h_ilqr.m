@@ -98,6 +98,8 @@ classdef h_ilqr < handle
             % Compute the rollout to get the initial trajectory with the
             % initial guess
             [states,inputs] = self.rollout();
+%             figure(3);
+% animate_ball_drop_circle(states,self.dt_)
             % Compute the current cost of the initial trajectory
             current_cost = self.compute_cost(states,inputs);
             
@@ -199,10 +201,13 @@ classdef h_ilqr < handle
             
             for ii=1:self.n_timesteps_
                 current_input = self.inputs_(ii,:)';
+                if(current_mode ==2)
+                   disp(''); 
+                end
                 % simulate each timestep with ode event checking, we can
                 % make speed ups by using discrete dynamics when far away
                 % from the guard ||g||<1 ?
-                options = odeset('Events', @(t,x)guardFunctions(t,x,self.g_{current_mode},self.parameters_),'MaxStep',0.01);
+                options = odeset('Events', @(t,x)guardFunctions(t,x,current_input,self.g_{current_mode},self.parameters_),'MaxStep',0.01);
                 tspan = self.dt_*(ii - 1):self.dt_/10:self.dt_*ii;
                 [t,x,te,xe,ie] = ode45(@(t,x)dynamics(t,x,self.f_{current_mode},current_input,self.parameters_),tspan,current_state,options);
                 %               [t,x,te,xe,ie] = ode45(@(t,x)dynamics_input(t,x,current_input,params,current_mode),tspan,current_state,options);
@@ -223,7 +228,7 @@ classdef h_ilqr < handle
                     else
                         current_mode = 1;
                     end
-                    options = odeset('Events', @(t,x)guardFunctions(t,x,self.g_{current_mode},self.parameters_),'MaxStep',0.01);
+                    options = odeset('Events', @(t,x)guardFunctions(t,x,current_input,self.g_{current_mode},self.parameters_),'MaxStep',0.01);
                     [t,x,te,xe,ie] = ode45(@(t,x)dynamics(t,x,self.f_{current_mode},current_input,self.parameters_),tspan,current_state,options);
                     impact_idx_vec = [impact_idx_vec;ii];
                     reset_mode_vec = [reset_mode_vec;current_mode];
@@ -384,11 +389,19 @@ classdef h_ilqr < handle
                    end
                    if(mode_count_difference>0)
                        % early impact
-                       impact_idx = self.impact_idx_vec_(hybrid_transitions);
-                       ref_state = self.reset_states_(hybrid_transitions,:)';
-                       ref_input = self.transition_inputs_(hybrid_transitions,:)';
-                       ref_k_feedforward = self.k_feedforward_(impact_idx,:)';
-                       ref_K_feedback = reshape(self.K_feedback_(impact_idx,:,:),self.n_inputs_,self.n_states_);
+                       if(hybrid_transitions>size(self.impact_idx_vec_,1))
+                           % We don't have a reference for this new domain
+                           ref_state = self.states_(end,:)';
+                           ref_input = self.inputs_(end,:)';
+                           ref_k_feedforward = 0*self.inputs_(end,:)'; % Use no feedforward
+                           ref_K_feedback = reshape(self.K_feedback_(end,:,:),self.n_inputs_,self.n_states_); % Use the last gain scheduled, might not be good
+                       else
+                           impact_idx = self.impact_idx_vec_(hybrid_transitions);
+                           ref_state = self.reset_states_(hybrid_transitions,:)';
+                           ref_input = self.transition_inputs_(hybrid_transitions,:)';
+                           ref_k_feedforward = self.k_feedforward_(impact_idx,:)';
+                           ref_K_feedback = reshape(self.K_feedback_(impact_idx,:,:),self.n_inputs_,self.n_states_);
+                       end
                    end
                    % Hold pre impact state, inputs, and gains constant
                    % Set gain
@@ -406,7 +419,7 @@ classdef h_ilqr < handle
                 % simulate each timestep with ode event checking, we can
                 % make speed ups by using discrete dynamics when far away
                 % from the guard ||g||<1 ?
-                options = odeset('Events', @(t,x)guardFunctions(t,x,self.g_{current_mode},self.parameters_),'MaxStep',0.01);
+                options = odeset('Events', @(t,x)guardFunctions(t,x,current_input,self.g_{current_mode},self.parameters_),'MaxStep',0.01);
                 tspan = self.dt_*(ii - 1):self.dt_/5:self.dt_*ii;
                 [t,x,te,xe,ie] = ode45(@(t,x)dynamics(t,x,self.f_{current_mode},current_input,self.parameters_),tspan,current_state,options);
                 %               [t,x,te,xe,ie] = ode45(@(t,x)dynamics_input(t,x,current_input,params,current_mode),tspan,current_state,options);
@@ -427,7 +440,7 @@ classdef h_ilqr < handle
                     else
                         current_mode = 1;
                     end
-                    options = odeset('Events', @(t,x)guardFunctions(t,x,self.g_{current_mode},self.parameters_),'MaxStep',0.01);
+                    options = odeset('Events', @(t,x)guardFunctions(t,x,current_input,self.g_{current_mode},self.parameters_),'MaxStep',0.01);
                     [t,x,te,xe,ie] = ode45(@(t,x)dynamics(t,x,self.f_{current_mode},current_input,self.parameters_),tspan,current_state,options);
                     impact_idx_vec = [impact_idx_vec;ii];
                     reset_mode_vec = [reset_mode_vec;current_mode];

@@ -1,6 +1,6 @@
 close all; clear all;
 % Compute symbolic dynamics and create functions
-symbolic_dynamics_1d_bouncing_ball();
+symbolic_dynamics_plastic_impact_circle_drop();
 
 % Initialize timings
 dt = 0.001;
@@ -9,26 +9,25 @@ end_time = 1;
 time_span = start_time:dt:end_time;
 
 % Set desired state
-n_states = 2;
-n_inputs = 1;
-init_state = [4;0]; % Define the initial state to be the origin with no velocity
+n_states = 4;
+n_inputs = 2;
+init_state = [1;5;1;-1]; % Define the initial state to be the origin with no velocity
 init_mode = 1;
-target_state = [3;0]; % Swing pendulum upright
+target_state = [-sqrt(3);4;0;0]; % Swing pendulum upright
 
 % Initial guess of zeros, but you can change it to any guess
-initial_guess = 0.0*ones(size(time_span,2),1);
+initial_guess = 0.0*ones(size(time_span,2),2);
 % Define weighting matrices
 Q_k = zeros(n_states,n_states); % zero weight to penalties along a strajectory since we are finding a trajectory
-R_k = 0.00025*eye(n_inputs);
+R_k = 0.0001*eye(n_inputs);
 
 % Set the terminal cost
-Q_T = 40*eye(n_states);
+Q_T = 100*eye(n_states);
 
 % Set the physical parameters of the system
 mass = 1;
 gravity = 9.8;
-coefficient_restitution = 0.75;
-parameters = [mass,gravity,coefficient_restitution];
+parameters = [mass,gravity];
 
 % Specify max number of iterations
 n_iterations = 50;
@@ -82,9 +81,11 @@ ylabel('$$\dot{\theta}$$');
 
 figure(2);
 h1 = plot(inputs(:,1),'k');
+hold on
+h1 = plot(inputs(:,2),'k');
 xlabel('Timestep');
 ylabel('$$u$$');
 
 figure(3);
-animate_bouncing_ball(states,dt,inputs)
+animate_ball_drop_circle(states,dt)
 
