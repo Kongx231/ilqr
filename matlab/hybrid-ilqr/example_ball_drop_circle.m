@@ -1,6 +1,6 @@
 close all; clear all;
 % Compute symbolic dynamics and create functions
-symbolic_dynamics_plastic_impact_circle_drop();
+% symbolic_dynamics_plastic_impact_circle_drop();
 
 % Initialize timings
 dt = 0.001;
@@ -56,6 +56,7 @@ f = {@calc_f1,@calc_f2};
 resets = {@calc_r12,@calc_r21};
 guards = {@calc_g12,@calc_g21};
 salts = {@calc_salt12,@calc_salt21};
+guard_jacobians = {@calc_Dg12,@calc_Dg21};
 
 % Define dynamics struct
 dynamics_struct.A_disc = A_disc;
@@ -63,6 +64,7 @@ dynamics_struct.B_disc = B_disc;
 dynamics_struct.f = f;
 dynamics_struct.resets = resets;
 dynamics_struct.guards = guards;
+dynamics_struct.guard_jacobians = guard_jacobians;
 dynamics_struct.salts = salts;
 dynamics_struct.parameters = parameters;
 

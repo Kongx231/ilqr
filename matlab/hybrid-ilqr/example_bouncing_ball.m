@@ -56,6 +56,7 @@ B_disc = {@calc_B_lin1_disc,@calc_B_lin2_disc};
 f = {@calc_f1,@calc_f2};
 resets = {@calc_r12,@calc_r21};
 guards = {@calc_g12,@calc_g21};
+guard_jacobians = {@calc_Dg12,@calc_Dg21};
 salts = {@calc_salt12,@calc_salt21};
 
 % Define dynamics struct
@@ -64,6 +65,7 @@ dynamics_struct.B_disc = B_disc;
 dynamics_struct.f = f;
 dynamics_struct.resets = resets;
 dynamics_struct.guards = guards;
+dynamics_struct.guard_jacobians = guard_jacobians;
 dynamics_struct.salts = salts;
 dynamics_struct.parameters = parameters;
 

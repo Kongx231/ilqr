@@ -6,7 +6,7 @@ q = y;
 states = [q;q_dot];
 
 % Define the ground to be at 0 height
-a = y;
+a = -y;
 % Jacobian of the ground constraint
 A = jacobian(a,y);
 % Defining the mass matrix
@@ -46,7 +46,7 @@ DR2 = jacobian(R2,states);
 % Guards
 G1 = a;
 DG1 = jacobian(G1,states);
-G2 = y_dot;
+G2 = -y_dot;
 DG2 = jacobian(G2,states);
 
 % No time derivatives for the guards

@@ -62,8 +62,8 @@ DR2 = jacobian(R2,states);
 G1 = a;
 DG1 = jacobian(G1,states);
 
-% Liftoff is the guard for contact
-G2 = lambda;
+% Liftoff is the guard for contact, negative because a is always negative
+G2 = -lambda;
 DG2 = jacobian(G2,states);
 
 % No time derivatives for the guards
