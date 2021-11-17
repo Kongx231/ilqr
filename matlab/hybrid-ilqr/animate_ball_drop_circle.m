@@ -1,10 +1,10 @@
-function animate_ball_drop_circle(xout, dt,Filename)
-% bRecord = 1;  % Uncomment this to save a video
- bRecord = 0;
+function animate_ball_drop_circle(xout, dt,uout,Filename)
+bRecord = 1;  % Uncomment this to save a video
+%  bRecord = 0;
 if bRecord
     % Define video recording parameters
-    if(nargin<3)
-    Filename = 'current_animation';
+    if(nargin<4)
+    Filename = 'ball_drop_circle_animation';
     else
         Filename = [Filename,'_final'];
     end
@@ -18,10 +18,10 @@ end
 % ode45 with the argument [tstart:dt:tfinal];)
 
 % Define axis window
-xmin = -5;
-xmax = 5;
-ymin = -1;
-ymax = 6;
+xmin = -2;
+xmax = 2;
+ymin = 3;
+ymax = 7;
 
 % Draw contact surfaces
 x_a = linspace(xmin, xmax,500);
@@ -41,6 +41,7 @@ contour(X,Y,a2,[0,0], 'k'); hold on;
 % Create trace of trajectory and particle object
 h = animatedline('LineStyle', ':', 'LineWidth', 1.5);
 particle = [];
+force_handle = [];
 
 % Set up axes
 axis equal
@@ -56,9 +57,17 @@ end
 for ii = 1:skip:size(xout,1)
     a = tic;
     addpoints(h,xout(ii,1),xout(ii,2));
-    drawnow limitrate
+    
     delete(particle) % Erases previous particle
-    particle = scatter(xout(ii,1),xout(ii,2), 'ro');
+    delete(force_handle) % Erases previous particle
+    particle = scatter(xout(ii,1),xout(ii,2), 'ro','filled');
+    hold on
+    if(nargin>2)
+        force_handle = quiver(xout(ii,1),xout(ii,2),uout(ii,1)/10,uout(ii,2)/10,'b');
+    else
+        force_handle = [];
+    end
+    drawnow limitrate
     if bRecord
         frame = getframe(gcf);
         writeVideo(v,frame);

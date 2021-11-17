@@ -4,7 +4,7 @@ bRecord = 1;  % Uncomment this to save a video
 %  bRecord = 0;
 if bRecord
     % Define video recording parameters
-    Filename = ['current_animation'];
+    Filename = ['bouncing_ball_animation'];
     v = VideoWriter(Filename, 'MPEG-4');
     myVideo.Quality = 100;
     open(v);
@@ -53,7 +53,7 @@ for ii = 1:skip:size(utrj,1)
     drawnow limitrate
     delete(particle) % Erases previous particle
     delete(force_handle);
-    particle = scatter(0,xout(ii,1),'ro');
+    particle = scatter(0,xout(ii,1),'ro','filled');
     if(nargin>2)
         force_handle = quiver(0,xout(ii,1),0,utrj(ii,1)/10,'b');
     else
