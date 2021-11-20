@@ -1,4 +1,4 @@
-classdef h_ilqr < handle
+classdef h_ilqr_mpc < handle
     % This class sets up the optimization problem with the constructor and
     % solve will return the optimal set of inputs and gains to achieve a desired target state.
     % Note that the discrete dynamics of the system and it's Jacobians are
@@ -8,7 +8,12 @@ classdef h_ilqr < handle
         init_mode_
         init_state_
         states_
-        target_state_
+        target_states_
+        target_inputs_
+        target_modes_
+        target_trajectory_struct_
+        target_K_feedback_
+        
         inputs_
         modes_
         dt_
@@ -32,7 +37,7 @@ classdef h_ilqr < handle
         salts_
         n_timesteps_
         n_iterations_
-        Dg_
+                Dg_
         
         % Hybrid storage
         trajectory_struct_
@@ -44,7 +49,6 @@ classdef h_ilqr < handle
         reset_diff_time_vec_
         transition_inputs_
         impact_mode_vec_
-        hybrid_transitions_
         
         % Expected cost reductions
         expected_cost_redu_
@@ -54,27 +58,35 @@ classdef h_ilqr < handle
         % Optimality condition
         min_reduction_
         
+        % Store the current state and current idx
+        current_state_
+        current_idx_
+        current_mode_
+        
     end
     methods
         % Constructor
         %         function self = h_ilqr(init_state,init_mode,target_state,initial_guess,dt,start_time,end_time,f,resets,guards,salts,A,B,Q_k,R_k,Q_T,parameters,n_iterations)
-        function self = h_ilqr(optimization_problem_struct,dynamic_struct)
+        function self = h_ilqr_mpc(optimization_problem_struct,dynamic_struct)
             % Optimization problem
-            
-            % Dynamics
-            
             self.init_mode_ = optimization_problem_struct.init_mode;
             self.init_state_ = optimization_problem_struct.init_state;
-            self.target_state_ = optimization_problem_struct.target_state;
-            self.inputs_ = optimization_problem_struct.initial_guess;
+            self.target_states_ = optimization_problem_struct.target_states;
+            self.target_inputs_ = optimization_problem_struct.target_inputs;
+            self.target_modes_ = optimization_problem_struct.target_modes;
+            self.target_trajectory_struct_ = optimization_problem_struct.target_trajectory_struct;
+            self.target_K_feedback_ = optimization_problem_struct.target_K_feedback;
+            self.inputs_ = optimization_problem_struct.target_inputs;
             self.n_states_ = size(optimization_problem_struct.init_state,1);
-            self.n_inputs_ = size(optimization_problem_struct.initial_guess,2);
+            self.n_inputs_ = size(optimization_problem_struct.target_inputs,2);
+            
+            self.n_timesteps_ = optimization_problem_struct.horizon;
             
             self.dt_ = optimization_problem_struct.dt;
-            self.start_time_ = optimization_problem_struct.start_time;
-            self.end_time_ = optimization_problem_struct.end_time;
-            self.time_span_ = optimization_problem_struct.start_time:optimization_problem_struct.dt:optimization_problem_struct.end_time;
-            self.n_timesteps_ = size(self.time_span_,2);
+            %             self.start_time_ = optimization_problem_struct.start_time;
+            %             self.end_time_ = optimization_problem_struct.end_time;
+            %             self.time_span_ = optimization_problem_struct.start_time:optimization_problem_struct.dt:optimization_problem_struct.end_time;
+            
             % Dynamics
             self.f_ = dynamic_struct.f;
             self.A_ = dynamic_struct.A_disc;
@@ -83,8 +95,8 @@ classdef h_ilqr < handle
             % Hybrid dynamics
             self.r_ = dynamic_struct.resets;
             self.g_ = dynamic_struct.guards;
-            self.Dg_ = dynamic_struct.guard_jacobians;
             self.salts_ = dynamic_struct.salts;
+            self.Dg_ = dynamic_struct.guard_jacobians;
             
             % Weighting
             self.Q_k_ = optimization_problem_struct.Q_k;
@@ -98,15 +110,203 @@ classdef h_ilqr < handle
             % Optimality condition
             self.min_reduction_ = optimization_problem_struct.min_reduction;
         end
-        function [states,inputs,modes,trajectory_struct,k_feedforward,K_feedback,current_cost,expected_reduction] = solve(self)
+        function [states,inputs,modes,trajectory_struct,k_feedforward,K_feedback,current_cost,expected_reduction,exit_flag] = solve_ilqr(self,current_idx,current_state,current_mode)
+            % init exit flag as 0
+            exit_flag = 0;
+            % If first time solving, then compute the backwards pass for
+            % gains
+            if(current_idx == 1)
+                % Store the current state and current idx
+                self.current_state_ = current_state;
+                self.current_idx_ = current_idx;
+                self.current_mode_ = current_mode;
+                % Set the reference trajectory as the actual
+                self.inputs_ = self.target_inputs_(current_idx:self.n_timesteps_,:);
+                self.states_ = self.target_states_(current_idx:(self.n_timesteps_+1),:);
+                self.modes_ = self.target_modes_(current_idx:(self.n_timesteps_),:);
+                self.K_feedback_ = self.target_K_feedback_(current_idx:self.n_timesteps_,:,:);
+                self.k_feedforward_ = 0*self.inputs_; % Don't want any feedforward gains on rollout
+                
+                horizon_end_idx = current_idx+self.n_timesteps_;
+                horizon_range = current_idx:(horizon_end_idx-1);
+                [impact_event_idx,locb] = ismember(self.target_trajectory_struct_.impact_idx_vec_,horizon_range);
+                if(any(impact_event_idx))
+%                     events = horizon_range(impact_event_idx);
+                    events = self.target_trajectory_struct_.impact_idx_vec_(impact_event_idx);
+                    for jj = 1:numel(events)
+                        struct_index = self.target_trajectory_struct_.impact_idx_vec_ == events(jj);
+                        % Store new hybrid trajectory info
+                        self.impact_states_ = self.target_trajectory_struct_.impact_states_(struct_index,:);
+                        self.reset_states_ = self.target_trajectory_struct_.reset_states_(struct_index,:);
+                        self.impact_idx_vec_ = self.target_trajectory_struct_.impact_idx_vec_(struct_index,:);
+                        self.reset_mode_vec_ = self.target_trajectory_struct_.reset_mode_vec_(struct_index,:);
+                        self.impact_diff_time_vec_ = self.target_trajectory_struct_.impact_diff_time_vec_(struct_index,:);
+                        self.reset_diff_time_vec_ = self.target_trajectory_struct_.reset_diff_time_vec_(struct_index,:);
+                        self.transition_inputs_ = self.target_trajectory_struct_.transition_inputs_(struct_index,:);
+                        self.impact_mode_vec_ = self.target_trajectory_struct_.impact_mode_vec_(struct_index,:);
+                    end
+                    disp('');
+                end
+                
+                % Set the reference trajectory structs TODO
+                %                 self.target_trajectory_struct_.impact_idx_vec_
+                
+                % First compute backwards pass along the reference
+                % trajectory to get the gain schedule
+%                 [k_feedforward,K_feedback,expected_reduction] = ...
+%                     self.backwards_pass();
+                %                 [k_feedforward,K_feedback,expected_reduction] = ...
+                %                     self.backwards_pass(self.states_,self.inputs_);
+            else
+                % TODO PAD THIS CORRECTLY WHEN NOT SOLVING EVERY TIME
+                % Calculate last time was solve_ilqr was called
+                span_from_last_call = current_idx-self.current_idx_;
+                % Store the current state and current idx
+                self.current_state_ = current_state;
+                self.current_idx_ = current_idx;
+                self.current_mode_ = current_mode;
+                
+                % Probably just use self.current_idx_-current_idx to get it
+                
+                
+                % Update the warm start to include the end of the
+                % trajectory
+                
+                % use the reference to pad
+                
+                if(span_from_last_call>self.n_timesteps_)
+                    % Check if last call is larger than horizon (THIS SHOULD
+                    % NEVER BE THE CASE)
+                end
+                
+                horizon_end_idx = current_idx+self.n_timesteps_;
+                horizon_range = current_idx:(horizon_end_idx-1);
+                %                 self.inputs_ = [self.inputs_((span_from_last_call+1):end,:);
+                %                     self.target_inputs_((horizon_end_idx-span_from_last_call):(horizon_end_idx-1),:)];
+                %                 self.states_ = [self.states_((span_from_last_call+1):end,:);
+                %                     self.target_states_((horizon_end_idx-span_from_last_call+1):horizon_end_idx,:)];
+                
+                self.inputs_ = [self.inputs_((span_from_last_call+1):end,:);
+                    self.target_inputs_((horizon_end_idx-span_from_last_call):(horizon_end_idx-1),:)];
+                self.modes_ = [self.modes_((span_from_last_call+1):end,:);
+                    self.target_modes_((horizon_end_idx-span_from_last_call):(horizon_end_idx-1),:)];
+                self.states_ = [self.states_((span_from_last_call+1):end,:);
+                    self.target_states_((horizon_end_idx-span_from_last_call+1):horizon_end_idx,:)];
+                % Load trajectory struct if it is within range
+                
+                [impact_event_idx,locb] = ismember(self.target_trajectory_struct_.impact_idx_vec_,horizon_range);
+                if(any(impact_event_idx))
+%                     events = horizon_range(impact_event_idx);
+                    events = self.target_trajectory_struct_.impact_idx_vec_(impact_event_idx);
+                    for jj = 1:numel(events)
+                        struct_index = self.target_trajectory_struct_.impact_idx_vec_ == events(jj);
+                        % Store new hybrid trajectory info
+                        self.impact_states_ = self.target_trajectory_struct_.impact_states_(struct_index,:);
+                        self.reset_states_ = self.target_trajectory_struct_.reset_states_(struct_index,:);
+                        self.impact_idx_vec_ = self.target_trajectory_struct_.impact_idx_vec_(struct_index,:);
+                        self.impact_idx_vec_ = self.impact_idx_vec_ - current_idx+1; % Need to adjust the index
+                        self.reset_mode_vec_ = self.target_trajectory_struct_.reset_mode_vec_(struct_index,:);
+                        self.impact_diff_time_vec_ = self.target_trajectory_struct_.impact_diff_time_vec_(struct_index,:);
+                        self.reset_diff_time_vec_ = self.target_trajectory_struct_.reset_diff_time_vec_(struct_index,:);
+                        self.transition_inputs_ = self.target_trajectory_struct_.transition_inputs_(struct_index,:);
+                        self.impact_mode_vec_ = self.target_trajectory_struct_.impact_mode_vec_(struct_index,:);
+                    end
+                end
+                
+                
+                %                 % repeat the last index instead of using the reference to
+                %                 pad (worse convergence)
+                %                 self.inputs_ = [self.inputs_(2:end,:); self.inputs_(end,:)];
+                %                 self.states_ = [self.states_(2:end,:); self.states_(end,:)];
+                
+                % Repeat the gain (or we can have the gain solved for the
+                % entire trajectory and use that)
+                %                 self.K_feedback_ = [self.K_feedback_(2:end,:,:); self.K_feedback_(end,:,:)];
+                self.K_feedback_ = [self.K_feedback_((span_from_last_call):end,:,:);self.target_K_feedback_((horizon_end_idx-span_from_last_call):(horizon_end_idx-1),:,:)];
+%                 repeated_gain = repmat(self.K_feedback_(end,:,:),span_from_last_call,1,1);
+%                 self.K_feedback_ = [self.K_feedback_((span_from_last_call):end,:,:);repeated_gain];
+                
+            end
+            
             % Compute the rollout to get the initial trajectory with the
             % initial guess
-            [states,inputs] = self.rollout();
+            [new_states,new_inputs,new_modes,new_trajectory_struct]=self.forwards_pass(0); % Learning rate 0 to use no feed forward terms (this might be wrong)
+            if(~isempty(new_trajectory_struct))
+                if(isempty(self.trajectory_struct_))
+                    % If we have no impact in the horizon, look further in
+                    % the future
+                    
+                    for jj = 1:numel( new_trajectory_struct.impact_idx_vec_)
+                        current_impact_idx = new_trajectory_struct.impact_idx_vec_(jj);
+                    same_mode_idx = find(new_trajectory_struct.impact_mode_vec_(jj)==self.target_trajectory_struct_.impact_mode_vec_);
+                    
+                    new_impact_idx = current_idx + current_impact_idx-1;
+                    impact_idx = self.target_trajectory_struct_.impact_idx_vec_(same_mode_idx);
+                    
+                    % If early impact
+%                     if(impact_idx > new_impact_idx)
+                    % There is probably an edge case that breaks this    
+                    adjustment = impact_idx-new_impact_idx;
+                    adjusted_idx = current_idx + adjustment;
+%                     self.current_idx_ = adjusted_idx;
+
+%                     self.target_inputs_(current_idx:(new_impact_idx-1),:) = [];
+%                     self.target_states_(current_idx:(new_impact_idx-1),:) = [];
+%                     self.target_modes_(current_idx:(new_impact_idx-1),:) = [];
+%                     self.target_K_feedback_(current_idx:(new_impact_idx-1),:,:) = [];
+
+%                     % Delete indexes in between new impact and reference
+%                     self.target_inputs_(new_impact_idx:(impact_idx-1),:) = [];
+%                     self.target_states_(new_impact_idx:(impact_idx-1),:) = [];
+%                     self.target_modes_(new_impact_idx:(impact_idx-1),:) = [];
+%                     self.target_K_feedback_(new_impact_idx:(impact_idx-1),:,:) = [];
+                    
+%                     
+%                     self.target_inputs_ = [self.target_inputs_;repmat(self.target_inputs_(end,:),adjustment,1)];
+%                      self.target_states_ = [self.target_states_;repmat(self.target_states_(end,:),adjustment,1)];
+%                      self.target_modes_ = [self.target_modes_;repmat(self.target_modes_(end,:),adjustment,1)];
+%                      self.target_K_feedback_ = [self.target_K_feedback_;repmat(self.target_K_feedback_(end,:,:),adjustment,1)];
+
+
+                    % Repeat end element
+%                     self.target_inputs_(new_impact_idx:(new_impact_idx+self.n_timesteps_-1),:) = self.target_inputs_(adjusted_idx:(adjusted_idx+self.n_timesteps_-1),:);
+%                     self.target_states_(new_impact_idx:(new_impact_idx+self.n_timesteps_),:) = self.target_states_(adjusted_idx:(adjusted_idx+self.n_timesteps_),:);
+%                     self.target_modes_(new_impact_idx:(new_impact_idx+self.n_timesteps_-1),:) = self.target_modes_(adjusted_idx:(adjusted_idx+self.n_timesteps_-1),:);
+%                     self.target_K_feedback_(new_impact_idx:(new_impact_idx+self.n_timesteps_-1),:,:) = self.target_K_feedback_(adjusted_idx:(adjusted_idx+self.n_timesteps_-1),:,:);
+%                                     % Set the reference trajectory as the actual
+%                     self.inputs_ = self.target_inputs_(adjusted_idx:(adjusted_idx+self.n_timesteps_-1),:);
+%                     self.states_ = self.target_states_(adjusted_idx:(adjusted_idx+self.n_timesteps_),:);
+%                     self.modes_ = self.target_modes_(adjusted_idx:(adjusted_idx+self.n_timesteps_-1),:);
+%                     self.K_feedback_ = self.target_K_feedback_(adjusted_idx:(adjusted_idx+self.n_timesteps_-1),:,:);
+%                     end
+%                                         % If late impact
+%                     if(impact_idx > new_impact_idx)
+%                         
+%                         adjustment = new_impact_idx - impact_idx;
+%                         adjusted_idx = current_idx + adjustment;
+%                                         % Set the reference trajectory as the actual
+%                         self.inputs_ = self.target_inputs_(adjusted_idx:(adjusted_idx+self.n_timesteps_-1),:);
+%                         self.states_ = self.target_states_(adjusted_idx:(adjusted_idx+self.n_timesteps_),:);
+%                         self.modes_ = self.target_modes_(adjusted_idx:(adjusted_idx+self.n_timesteps_-1),:);
+%                         self.K_feedback_ = self.target_K_feedback_(adjusted_idx:(adjusted_idx+self.n_timesteps_-1),:,:);
+%                     end
+                    end
+                    
+                else
+                    % If it is in range, should maybe adjust it too...
+                    
+                end
+                
+               
+            end
             %             figure(3);
-            %             animate_bouncing_ball(states,self.dt_,inputs)
             % animate_ball_drop_circle(states,self.dt_)
             % Compute the current cost of the initial trajectory
-            current_cost = self.compute_cost(states,inputs);
+            current_cost = self.compute_cost(new_states,new_inputs,new_modes,new_trajectory_struct);
+            self.states_ = new_states;
+            self.inputs_ = new_inputs;
+            self.modes_ = new_modes;
+            self.trajectory_struct_ = new_trajectory_struct;
             
             learning_speed = 0.95; % This can be modified, 0.95 is very slow
             low_learning_rate = 0.05; % if learning rate drops to this value stop the optimization
@@ -120,6 +320,7 @@ classdef h_ilqr < handle
                 if(abs(expected_reduction)<self.min_reduction_)
                     % If the expected reduction is low, then end the
                     % optimization
+                    exit_flag = 1;
                     disp("Stopping optimization, optimal trajectory");
                     break;
                 end
@@ -128,10 +329,10 @@ classdef h_ilqr < handle
                 % Execute linesearch until the armijo condition is met (for
                 % now just check if the cost decreased) TODO add real
                 % armijo condition
-                while(learning_rate > 0.05 && armijo_flag == 0)
+                while(learning_rate > low_learning_rate && armijo_flag == 0)
                     % Compute forward pass
                     [new_states,new_inputs,new_modes,new_trajectory_struct]=forwards_pass(self,learning_rate);
-                    new_cost = self.compute_cost(new_states,new_inputs);
+                    new_cost = self.compute_cost(new_states,new_inputs,new_modes,new_trajectory_struct);
                     
                     % Calculate armijo condition
                     cost_difference = (current_cost - new_cost);
@@ -160,8 +361,9 @@ classdef h_ilqr < handle
                         disp(['Reducing learning rate to: ',num2str(learning_rate)]);
                     end
                 end
-                if(learning_rate<low_learning_rate)
+                if(learning_rate<=low_learning_rate)
                     % If learning rate is low, then stop optimization
+                    exit_flag = -1;
                     disp("Stopping optimization, low learning rate");
                     break;
                 end
@@ -172,148 +374,28 @@ classdef h_ilqr < handle
             modes = self.modes_;
             trajectory_struct = self.trajectory_struct_;
         end
-        function [pre_impact_collars_state,pre_impact_collars_input,post_impact_collars_state,post_impact_collars_input] = hybrid_collars(self)
-            % Creates hybrid collars for the current solve
-            hybrid_idxs = self.trajectory_struct_.impact_idx_vec_;
-            n_transitions = numel(hybrid_idxs);
-            n_timesteps = numel(self.time_span_);
-            pre_impact_collars_state = zeros(n_transitions,n_timesteps,self.n_states_);
-            pre_impact_collars_input = zeros(n_transitions,n_timesteps,self.n_inputs_);
-            
-            post_impact_collars_state = zeros(n_transitions,n_timesteps,self.n_states_);
-            post_impact_collars_input = zeros(n_transitions,n_timesteps,self.n_inputs_);
-            for ii = 1:n_transitions
-                current_idx = self.trajectory_struct_.impact_idx_vec_(ii);
-                % Make a collar for pre impact
-                pre_impact_mode = self.trajectory_struct_.impact_mode_vec_(ii);
-                pre_impact_state = self.trajectory_struct_.impact_states_(ii,:)';
-                pre_impact_input = self.trajectory_struct_.transition_inputs_(ii,:)';
-                
-                % Set the timespan to reach up until the next impact.
-                % If there isn't a next impact, then go until end index
-                if(ii == n_transitions)
-                    pre_impact_range = (current_idx):(n_timesteps);
-                    pre_impact_timespan = self.dt_*(pre_impact_range);
-                else
-                    pre_impact_range = (current_idx):(self.trajectory_struct_.impact_idx_vec_(ii+1)-1);
-                    pre_impact_timespan = self.dt_*(pre_impact_range);
-                end
-               
-                [~,pre_impact_collar_state] = ...
-                    ode45(@(t,x)dynamics(t,x,self,self.f_{pre_impact_mode},pre_impact_input,self.parameters_),...
-                    pre_impact_timespan,pre_impact_state);
-                pre_impact_collar_input = repmat(pre_impact_input',numel(pre_impact_range),1);
-                
-                pre_impact_collars_state(ii,pre_impact_range,:) = pre_impact_collar_state;
-                pre_impact_collars_input(ii,pre_impact_range,:) = pre_impact_collar_input;
-                
-                % Make a collar for post impact
-                post_impact_mode = self.trajectory_struct_.reset_mode_vec_(ii);
-                post_impact_state = self.trajectory_struct_.reset_states_(ii,:)';
-                % Actually for input extension, it makes more sense to use
-                % the input afterwards due to the assumption that we only
-                % use the linearizatino of the impact mode
-                post_impact_input = self.inputs_(current_idx+1,:)';
-                
-                % Set the timespan to go backwards until the previous impact.
-                % If there isn't a previous impact, then go until begining
-                % index
-                if(ii == 1)
-                    post_impact_range = flip(1:(current_idx));
-                    post_impact_timespan = self.dt_*(post_impact_range-1);
-                else
-                    post_impact_range = flip((self.trajectory_struct_.impact_idx_vec_(ii-1)-1):(current_idx));
-                    post_impact_timespan = self.dt_*(post_impact_range-1);
-                end
-               
-                [~,post_impact_collar_state] = ...
-                    ode45(@(t,x)dynamics(t,x,self,self.f_{post_impact_mode},post_impact_input,self.parameters_),...
-                    post_impact_timespan,post_impact_state);
-                post_impact_collar_input = repmat(post_impact_input',numel(post_impact_range),1);
-                
-                post_impact_collars_state(ii,post_impact_range,:) = post_impact_collar_state;
-                post_impact_collars_input(ii,post_impact_range,:) = post_impact_collar_input;
-            end
-        end
-        
-        function total_cost = compute_cost(self,states,inputs)
+        function total_cost = compute_cost(self,states,inputs,modes,trajectory_struct)
             % Initialize cost
             total_cost = 0.0;
             for ii = 1:self.n_timesteps_
                 current_x = states(ii,:)'; % Not being used currently
                 current_u = inputs(ii,:)';
                 
-                current_cost = current_u'*self.R_k_*current_u; % Right now only considering cost in input
+                adjustment_idx = self.current_idx_ -1;
+                % Get the current target input and state
+                current_x_des = self.target_states_(ii+adjustment_idx,:)';
+                current_u_des = self.target_inputs_(ii+adjustment_idx,:)';
+                
+                % Compute differences from the target
+                x_difference = current_x_des - current_x;
+                u_difference = current_u_des - current_u;
+                current_cost = u_difference'*self.R_k_*u_difference + x_difference'*self.Q_k_*x_difference;
                 total_cost = total_cost+current_cost;
             end
             % Compute terminal cost
-            terminal_cost = (self.target_state_-states(end,:)')'*self.Q_T_*(self.target_state_-states(end,:)');
+            terminal_x_diff = self.target_states_(self.current_idx_+self.n_timesteps_,:)'-states(end,:)';
+            terminal_cost = terminal_x_diff'*self.Q_T_*terminal_x_diff;
             total_cost = total_cost+terminal_cost;
-        end
-        function [states,inputs] = rollout(self)
-            states = zeros(self.n_timesteps_+1,self.n_states_);
-            inputs = zeros(self.n_timesteps_,self.n_inputs_);
-            dt = self.dt_;
-            
-            % initialize hybrid
-            modes = zeros(self.n_timesteps_+1,1);
-            impact_states = [];
-            reset_states = [];
-            impact_idx_vec = [];
-            reset_mode_vec = [];
-            impact_diff_time_vec = [];
-            reset_diff_time_vec = [];
-            transition_inputs = [];
-            impact_mode_vec = [];
-            
-            current_state = self.init_state_;
-            current_mode = self.init_mode_;
-            states(1,:) = current_state';
-            modes(1) = current_mode;
-            
-            hybrid_transitions = 0;
-            
-            for ii=1:self.n_timesteps_
-                current_input = self.inputs_(ii,:)';
-                tspan = self.dt_*(ii - 1):self.dt_/10:self.dt_*ii;
-                [next_state,current_mode,hybrid_timestep_struct] =simulate_hybrid_timestep(self,current_state,current_input,current_mode,tspan,ii);
-                impact_states = [impact_states;hybrid_timestep_struct.impact_states];
-                reset_states = [reset_states;hybrid_timestep_struct.reset_states];
-                impact_idx_vec = [impact_idx_vec;hybrid_timestep_struct.impact_idx_vec];
-                reset_mode_vec = [reset_mode_vec;hybrid_timestep_struct.reset_mode_vec];
-                impact_diff_time_vec = [impact_diff_time_vec;hybrid_timestep_struct.impact_diff_time_vec];
-                reset_diff_time_vec = [reset_diff_time_vec;hybrid_timestep_struct.reset_diff_time_vec];
-                transition_inputs = [transition_inputs;hybrid_timestep_struct.transition_inputs];
-                impact_mode_vec = [impact_mode_vec;hybrid_timestep_struct.impact_mode_vec];
-                hybrid_transitions = hybrid_transitions + hybrid_timestep_struct.hybrid_transitions;
-                
-                
-                %                 next_state = self.f_(current_state,current_input,self.dt_,self.parameters_);
-                % If we hit a guard apply reset
-                
-                % Store states and inputs
-                states(ii+1,:) = next_state';
-                inputs(ii,:) = current_input'; % in case we have a control law, we store the input used
-                modes(ii+1) = current_mode;
-                % Update the current state
-                current_state = next_state;
-            end
-            % Store the trajectory (states,inputs)
-            %             animate_bouncing_ball(states,dt,inputs)
-            self.states_ = states;
-            self.inputs_= inputs;
-            
-            % Store hybrid
-            self.modes_ = modes;
-            self.impact_states_ = impact_states;
-            self.reset_states_ = reset_states;
-            self.impact_idx_vec_ = impact_idx_vec;
-            self.reset_mode_vec_ = reset_mode_vec;
-            self.impact_diff_time_vec_ = impact_diff_time_vec;
-            self.reset_diff_time_vec_ = reset_diff_time_vec;
-            self.transition_inputs_ = transition_inputs;
-            self.impact_mode_vec_ = impact_mode_vec;
-            self.hybrid_transitions_ = hybrid_transitions;
         end
         function [constraintFcns,isterminal,direction] = guardFunctions(t,x,self,u,current_mode,parameters)
             % Compute constraint function (transition if goes negative)
@@ -334,6 +416,7 @@ classdef h_ilqr < handle
             % Initialize time derivative of state vector as column vector
             dx = f(x,input,parameters);
         end
+        
         function [next_state,current_mode,time_step_struct] = simulate_hybrid_timestep(self,current_state,current_input,current_mode,tspan,ii)
             
             
@@ -417,7 +500,73 @@ classdef h_ilqr < handle
             time_step_struct.transition_inputs = transition_inputs;
             time_step_struct.hybrid_transitions = hybrid_transitions;
         end
+        function [states,inputs] = rollout(self)
+            states = zeros(self.n_timesteps_+1,self.n_states_);
+            inputs = zeros(self.n_timesteps_,self.n_inputs_);
+            dt = self.dt_;
+            
+            % initialize hybrid
+            modes = zeros(self.n_timesteps_,1);
+            impact_states = [];
+            reset_states = [];
+            impact_idx_vec = [];
+            reset_mode_vec = [];
+            impact_diff_time_vec = [];
+            reset_diff_time_vec = [];
+            transition_inputs = [];
+            impact_mode_vec = [];
+            
+            current_state = self.current_state_;
+            current_mode = self.current_mode_;
+            states(1,:) = current_state';
+            
+            
+            for ii=1:self.n_timesteps_
+                current_input = self.inputs_(ii,:)';
+                
+                tspan = self.dt_*(ii - 1):self.dt_/10:self.dt_*ii;
+                [next_state,current_mode,hybrid_timestep_struct] =simulate_hybrid_timestep(self,current_state,current_input,current_mode,tspan,ii);
+                impact_states = [impact_states;hybrid_timestep_struct.impact_states];
+                reset_states = [reset_states;hybrid_timestep_struct.reset_states];
+                impact_idx_vec = [impact_idx_vec;hybrid_timestep_struct.impact_idx_vec];
+                reset_mode_vec = [reset_mode_vec;hybrid_timestep_struct.reset_mode_vec];
+                impact_diff_time_vec = [impact_diff_time_vec;hybrid_timestep_struct.impact_diff_time_vec];
+                reset_diff_time_vec = [reset_diff_time_vec;hybrid_timestep_struct.reset_diff_time_vec];
+                transition_inputs = [transition_inputs;hybrid_timestep_struct.transition_inputs];
+                impact_mode_vec = [impact_mode_vec;hybrid_timestep_struct.impact_mode_vec];
+                hybrid_transitions = hybrid_transitions + hybrid_timestep_struct.hybrid_transitions;
+                
+                
+                %                 next_state = self.f_(current_state,current_input,self.dt_,self.parameters_);
+                % If we hit a guard apply reset
+                
+                % Store states and inputs
+                states(ii+1,:) = next_state';
+                inputs(ii,:) = current_input'; % in case we have a control law, we store the input used
+                modes(ii) = current_mode;
+                % Update the current state
+                current_state = next_state;
+            end
+            % Store the trajectory (states,inputs)
+            %             animate_bouncing_ball(states,dt,inputs)
+            self.states_ = states;
+            self.inputs_= inputs;
+            
+            % Store hybrid
+            self.modes_ = modes;
+            self.impact_states_ = impact_states;
+            self.reset_states_ = reset_states;
+            self.impact_idx_vec_ = impact_idx_vec;
+            self.reset_mode_vec_ = reset_mode_vec;
+            self.impact_diff_time_vec_ = impact_diff_time_vec;
+            self.reset_diff_time_vec_ = reset_diff_time_vec;
+            self.transition_inputs_ = transition_inputs;
+            self.impact_mode_vec_ = impact_mode_vec;
+        end
         function [k_trj,K_trj,expected_cost_redu] = backwards_pass(self)
+            if(self.current_idx_ == 551)
+                disp('');
+            end
             % Initialize feedforward gains
             k_trj = zeros(size(self.inputs_));
             K_trj = zeros(size(self.inputs_,1),size(self.inputs_,2),size(self.states_,2));
@@ -426,8 +575,9 @@ classdef h_ilqr < handle
             expected_cost_redu_grad = 0;
             expected_cost_redu_hess = 0;
             
+            idx_adjustment = self.current_idx_-1;
             % Iitialize gradient and hessian of the value function
-            V_x = self.Q_T_*(self.states_(end,:)'-self.target_state_);
+            V_x = self.Q_T_*(self.states_(end,:)'-self.target_states_(self.current_idx_+self.n_timesteps_,:)');
             V_xx = self.Q_T_;
             
             for ii = flip(1:self.n_timesteps_) % Go backwards in time
@@ -435,6 +585,9 @@ classdef h_ilqr < handle
                 current_x = self.states_(ii,:)';
                 current_u = self.inputs_(ii,:)';
                 current_mode = self.modes_(ii);
+                
+                current_x_des = self.target_states_(ii+idx_adjustment,:)';
+                current_u_des = self.target_inputs_(ii+idx_adjustment,:)';
                 
                 % If impact occured, then apply saltation matrix
                 if(any(ii==self.impact_idx_vec_))
@@ -456,9 +609,9 @@ classdef h_ilqr < handle
                 
                 
                 % Get the gradient and hessian of the current cost
-                l_x = zeros(size(current_x)); % Defined as zero right now because there is no desired trajectory
-                l_xx = self.Q_k_; % Q_k should also be zero here
-                l_u = self.R_k_*current_u;
+                l_x = self.Q_k_*(current_x-current_x_des);
+                l_xx = self.Q_k_;
+                l_u = self.R_k_*(current_u-current_u_des);
                 l_uu = self.R_k_;
                 
                 % Get the jacobian of the discretized dynamics
@@ -508,14 +661,12 @@ classdef h_ilqr < handle
         function [states,inputs,modes,trajectory_struct]=forwards_pass(self,learning_rate)
             states = zeros(self.n_timesteps_+1,self.n_states_);
             inputs = zeros(self.n_timesteps_,self.n_inputs_);
-            current_state = self.init_state_;
-            current_mode = self.init_mode_;
-            
+            current_state = self.current_state_;
+            current_mode = self.current_mode_;
             dt = self.dt_;
             
             % initialize hybrid
-            modes = zeros(self.n_timesteps_+1,1);
-            
+            modes = zeros(self.n_timesteps_,1);
             impact_states = [];
             reset_states = [];
             impact_idx_vec = [];
@@ -529,8 +680,7 @@ classdef h_ilqr < handle
             
             % set the first state to be the initial
             states(1,:) = current_state;
-            modes(1) = current_mode;
-            
+
             for ii=1:self.n_timesteps_
                 % Get the current gains and compute the feedforward and
                 % feedback terms
@@ -538,7 +688,7 @@ classdef h_ilqr < handle
                 mode_count_difference = hybrid_transitions-reference_hybrid_transitions;
                 
                 % Check if mode mismatch
-                if(current_mode ~=self.modes_(ii))
+                if(current_mode ~=self.modes_(ii) && mode_count_difference ~= 0) % Get rid of edge case
                     if(mode_count_difference<=0)
                         % Late impact
                         impact_idx = self.impact_idx_vec_(reference_hybrid_transitions);
@@ -575,6 +725,7 @@ classdef h_ilqr < handle
                     current_feedback = reshape(self.K_feedback_(ii,:,:),self.n_inputs_,self.n_states_)*(current_state-self.states_(ii,:)');
                     current_input = self.inputs_(ii,:)' + current_feedback + current_feedforward;
                 end
+                
                 tspan = self.dt_*(ii - 1):self.dt_/10:self.dt_*ii;
                 [next_state,current_mode,hybrid_timestep_struct] =simulate_hybrid_timestep(self,current_state,current_input,current_mode,tspan,ii);
                 impact_states = [impact_states;hybrid_timestep_struct.impact_states];
@@ -590,7 +741,7 @@ classdef h_ilqr < handle
                 % Store states and inputs
                 states(ii+1,:) = next_state';
                 inputs(ii,:) = current_input';
-                modes(ii+1) = current_mode;
+                modes(ii) = current_mode;
                 % Update the current state
                 current_state = next_state;
             end
