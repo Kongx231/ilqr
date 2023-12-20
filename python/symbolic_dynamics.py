@@ -2,6 +2,36 @@ import numpy as np
 import sympy as sp
 from sympy.matrices import Matrix
 
+def symbolic_cart_pole():
+    '''
+    system dynamics: https://underactuated.mit.edu/acrobot.html
+    states: x_dot, x, theta_dot, theta
+    '''
+    M,m,g,l,theta,theta_dot,x,x_dot,u,dt = sp.symbols('M m g l theta theta_dot x x_dot u dt')
+
+    # Define the states and inputs
+    inputs = Matrix([u])
+    states = Matrix([theta_dot,theta,x_dot,x])
+    # Defining the dynamics of the system
+    f = Matrix([(u + m * l * theta_dot**2 * sp.sin(theta) + m * g * sp.sin(theta)*sp.cos(theta)) / (M + m*(sp.sin(theta))**2),
+                theta_dot,
+                (-u*sp.cos(theta) - m*l*theta_dot**2*sp.sin(theta)*sp.cos(theta)) / (M + m*(sp.sin(theta))**2),
+                x_dot])
+
+    # Discretize the dynamics usp.sing euler integration
+    f_disc = states+f*dt
+    # Take the jacobian with respect to states and inputs
+    A_disc = f_disc.jacobian(states)
+    B_disc = f_disc.jacobian(inputs)
+
+    # Define the parameters of the system
+    parameters = Matrix([M,m,g,l])
+
+    f_disc_func = sp.lambdify((states,inputs,dt,parameters),f_disc)
+    A_disc_func = sp.lambdify((states,inputs,dt,parameters),A_disc)
+    B_disc_func = sp.lambdify((states,inputs,dt,parameters),B_disc)
+    return (f_disc_func,A_disc_func,B_disc_func)
+    
 def symbolic_dynamics_pendulum():
     m,g,L,theta,theta_dot,u,dt = sp.symbols('m g L theta theta_dot u dt')
 

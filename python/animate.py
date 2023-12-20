@@ -2,6 +2,42 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+def animate_cart_pole(states,inputs,dt,parameters):
+    pendulum_length = parameters[3]
+    x_cart = states[:,1]
+    y_cart = 0.0 * x_cart
+    x_pos = pendulum_length*np.sin(states[:, 3]) + x_cart
+    y_pos = -pendulum_length*np.cos(states[:, 3]) + y_cart
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, autoscale_on=False, xlim=(states[:,1].min()-pendulum_length, states[:,1].max()+pendulum_length), ylim=(-pendulum_length*2, pendulum_length*2))
+    ax.grid()
+    ax.set_aspect('equal', adjustable='box')
+
+    line, = ax.plot([], [], 'o-', lw=2)
+    time_template = 'time = %.1fs'
+    time_text = ax.text(0.05, 0.9, '', transform=ax.transAxes)
+
+
+    def init():
+        line.set_data([], [])
+        time_text.set_text('')
+        return line, time_text
+
+
+    def animate(i):
+        thisx = [x_cart[i], x_pos[i]]
+        thisy = [y_cart[i], y_pos[i]]
+
+        line.set_data(thisx, thisy)
+        time_text.set_text(time_template % (i*dt))
+        return line, time_text
+
+    ani = animation.FuncAnimation(fig, animate, np.arange(1, len(states)),
+                                  interval=2, blit=True, init_func=init)
+
+    return ani
+
 def animate_pendulum(states,inputs,dt,parameters):
     # Animation follows https://matplotlib.org/2.0.2/examples/animation/double_pendulum_animated.html
     # Animate
