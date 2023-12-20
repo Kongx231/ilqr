@@ -36,7 +36,8 @@ def animate_pendulum(states,inputs,dt,parameters):
                                   interval=25, blit=True, init_func=init)
 
     # ani.save('pendulum_swingup.mp4', fps=15)
-    plt.show()
+    # plt.show()
+    return ani
 
 def animate_pendulum_tracking(states,states_new,inputs,dt,parameters):
     # Animation follows https://matplotlib.org/2.0.2/examples/animation/double_pendulum_animated.html

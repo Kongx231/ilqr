@@ -47,5 +47,5 @@ ilqr_ = ilqr(init_state,target_state,initial_guess,dt,start_time,end_time,f,A,B,
 (states,inputs,k_feedforward,K_feedback,current_cost) = ilqr_.solve()
 
 # Animate
-animate_pendulum(states,inputs,dt,parameters)
+anim = animate_pendulum(states,inputs,dt,parameters)
 
