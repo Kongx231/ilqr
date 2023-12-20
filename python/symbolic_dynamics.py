@@ -9,7 +9,7 @@ def symbolic_dynamics_pendulum():
     inputs = Matrix([u])
     states = Matrix([theta,theta_dot])
     # Defining the dynamics of the system
-    f = Matrix([theta_dot,(u-m*g*L*sp.sp.sin(theta))/(m*L*L)])
+    f = Matrix([theta_dot,(u-m*g*L*sp.sin(theta))/(m*L*L)])
 
     # Discretize the dynamics usp.sing euler integration
     f_disc = states+f*dt
