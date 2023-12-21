@@ -2,6 +2,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
+# Colab import to show animation
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from matplotlib import rc
+rc('animation', html='jshtml')
+plt.rcParams["animation.html"] = "jshtml"
+
+
 def animate_cart_pole(states,inputs,dt,parameters):
     pendulum_length = parameters[3]
     x_cart = states[:,1]
